@@ -1,5 +1,5 @@
 -- | Typeclasses for Groupoid-like structures.
-module Data.Semigroupoid (
+module Data.Semigroupoid.Simple (
     -- * @'Semigroupoid'@ (partial @'Semigroup'@)
     Semigroupoid (..)
   , pappend

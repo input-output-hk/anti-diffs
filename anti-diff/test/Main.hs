@@ -14,7 +14,7 @@ import           Test.Tasty.QuickCheck
 
 import           Data.FingerTree.RootMeasured.Strict
 import           Data.Map.Diff.Strict
-import           Data.Semigroupoid.Laws (testGroupWithProxy)
+import           Data.Semigroupoid.Simple.Laws (testGroupWithProxy)
 
 import qualified Test.Data.FingerTree.RootMeasured.Strict
 import           Test.Data.FingerTree.RootMeasured.Strict (appendProp,

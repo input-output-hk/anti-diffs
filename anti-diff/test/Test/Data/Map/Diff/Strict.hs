@@ -20,8 +20,8 @@ import           Test.Tasty.QuickCheck
 
 import           Data.Map.Diff.Strict
 
-import           Data.Semigroupoid.Auto
-import           Data.Semigroupoid.Laws
+import           Data.Semigroupoid.Simple.Auto
+import           Data.Semigroupoid.Simple.Laws
 
 tests :: TestTree
 tests = testGroup "Data.Map.Diff.Strict" [

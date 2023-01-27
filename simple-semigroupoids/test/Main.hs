@@ -2,12 +2,12 @@ module Main (main) where
 
 import           Test.Tasty
 
-import           Test.Data.Semigroupoid (tests)
+import           Test.Data.Semigroupoid.Simple (tests)
 
 
 
 main :: IO ()
 main = defaultMain $
   testGroup "Data" [
-      Test.Data.Semigroupoid.tests
+      Test.Data.Semigroupoid.Simple.tests
     ]
