@@ -2,7 +2,7 @@
 --
 -- Laws included for typeclasses defining group-like and groupoid-like
 -- structures.
-module Data.Semigroupoid.Laws (
+module Data.Semigroupoid.Simple.Laws (
     -- * @Test.Tasty@ combinators
     testGroupWithProxy
     -- * Test tree makers
@@ -31,7 +31,7 @@ module Data.Semigroupoid.Laws (
 import           Data.Group
 import           Data.Maybe (fromJust)
 import           Data.Proxy
-import           Data.Semigroupoid
+import           Data.Semigroupoid.Simple
 import           Data.Typeable
 
 import           Test.QuickCheck

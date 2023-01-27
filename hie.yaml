@@ -12,8 +12,8 @@ cradle:
     - path: "./anti-diff/bench/Bench/Data/FingerTree/RootMeasured/Strict.hs"
       component: "anti-diff:bench:bench"
 
-    - path: "./semigroupoid/src"
-      component: "lib:semigroupoid"
+    - path: "./simple-semigroupoids/src"
+      component: "lib:simple-semigroupoids"
 
-    - path: "./semigroupoid/test"
-      component: "semigroupoid:test:test"
+    - path: "./simple-semigroupoids/test"
+      component: "simple-semigroupoids:test:test"

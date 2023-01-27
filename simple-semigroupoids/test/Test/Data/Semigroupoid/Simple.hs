@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Data.Semigroupoid (tests) where
+module Test.Data.Semigroupoid.Simple (tests) where
 
 import           Data.Monoid (Sum (..))
 import           Data.Proxy
@@ -8,8 +8,8 @@ import           Data.Proxy
 import           Test.Tasty
 import           Test.Tasty.QuickCheck
 
-import           Data.Semigroupoid.Auto
-import           Data.Semigroupoid.Laws
+import           Data.Semigroupoid.Simple.Auto
+import           Data.Semigroupoid.Simple.Laws
 
 
 

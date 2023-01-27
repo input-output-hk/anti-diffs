@@ -20,7 +20,7 @@ import           Test.Tasty
 import           Test.Tasty.QuickCheck
 
 import           Data.FingerTree.RootMeasured.Strict
-import           Data.Semigroupoid.Laws (testGroupWithProxy)
+import           Data.Semigroupoid.Simple.Laws (testGroupWithProxy)
 
 
 tests :: TestTree

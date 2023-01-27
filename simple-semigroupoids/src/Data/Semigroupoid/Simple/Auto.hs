@@ -4,13 +4,13 @@
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
-module Data.Semigroupoid.Auto (Auto (..)) where
+module Data.Semigroupoid.Simple.Auto (Auto (..)) where
 
 import           Data.Group (Group (..))
 
 import           Test.QuickCheck
 
-import           Data.Semigroupoid
+import           Data.Semigroupoid.Simple
 
 -- | Automatically derive type class instances for groupoid-like structures
 -- from type class instances for group-like structures.

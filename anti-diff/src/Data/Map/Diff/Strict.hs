@@ -71,7 +71,7 @@ import           Data.Group
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Semigroupoid
+import           Data.Semigroupoid.Simple
 import           Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import           Data.Sequence.NonEmpty (NESeq (..))
