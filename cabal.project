@@ -12,4 +12,4 @@ repository cardano-haskell-packages
 
 packages:
   ./anti-diff
-  ./semigroupoid
+  ./simple-semigroupoids

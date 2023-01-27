@@ -62,7 +62,7 @@ library
                      , nonempty-containers
                      , nothunks          >=0.1.2 && <0.2
                      , QuickCheck
-                     , semigroupoid
+                     , simple-semigroupoids
                      , cardano-strict-containers
                      , tasty
                      , tasty-quickcheck
@@ -97,7 +97,7 @@ test-suite test
                      , tasty-quickcheck
 
                      , anti-diff
-                     , semigroupoid
+                     , simple-semigroupoids
 
   ghc-options:         -Wall
                        -Wcompat
@@ -129,7 +129,7 @@ benchmark bench
                      , tasty-quickcheck
 
                      , anti-diff
-                     , semigroupoid
+                     , simple-semigroupoids
 
   ghc-options:         -Wall
                        -Wcompat
