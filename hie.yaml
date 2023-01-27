@@ -1,0 +1,19 @@
+cradle:
+  cabal:
+    - path: "./anti-diff/src"
+      component: "lib:anti-diff"
+
+    - path: "./anti-diff/test"
+      component: "anti-diff:test:test"
+
+    - path: "./anti-diff/bench/Main.hs"
+      component: "anti-diff:bench:bench"
+
+    - path: "./anti-diff/bench/Bench/Data/FingerTree/RootMeasured/Strict.hs"
+      component: "anti-diff:bench:bench"
+
+    - path: "./semigroupoid/src"
+      component: "lib:semigroupoid"
+
+    - path: "./semigroupoid/test"
+      component: "semigroupoid:test:test"
