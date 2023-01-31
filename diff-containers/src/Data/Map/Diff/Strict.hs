@@ -36,8 +36,8 @@ module Data.Map.Diff.Strict (
   , applyDiff
   , applyDiffForKeys
     -- * Folds and traversals
-  , traverseLastDiffEntries
-  , unsafeFoldMapDiffEntry
+  , foldMapDiffEntry
+  , traverseDiffEntryWithKey_
   ) where
 
 import           Prelude hiding (last, length, null, splitAt)
@@ -271,16 +271,16 @@ applyDiffForKeys m ks (Diff diffs) =
 ------------------------------------------------------------------------------}
 
 -- | @'foldMap'@ over the last diff entry in each diff history.
-unsafeFoldMapDiffEntry :: (Monoid m) => (DiffEntry v -> m) -> Diff k v -> m
-unsafeFoldMapDiffEntry f (Diff m) =
+foldMapDiffEntry :: (Monoid m) => (DiffEntry v -> m) -> Diff k v -> m
+foldMapDiffEntry f (Diff m) =
   foldMap (f . NESeq.last . getNEDiffHistory) m
 
 -- | Traversal with keys over the last diff entry in each diff history.
-traverseLastDiffEntries ::
+traverseDiffEntryWithKey_ ::
      Applicative t
   => (k -> DiffEntry v -> t a)
   -> Diff k v
   -> t ()
-traverseLastDiffEntries f (Diff m) = void $ Map.traverseWithKey g m
+traverseDiffEntryWithKey_ f (Diff m) = void $ Map.traverseWithKey g m
   where
     g k dh = f k (last dh)
