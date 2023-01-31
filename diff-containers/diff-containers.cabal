@@ -48,6 +48,7 @@ test-suite test
   other-modules:      Test.Data.Map.Diff.Strict
 
   build-depends:      base              >=4.9 && <4.17
+                    , containers
                     , diff-containers
                     , nonempty-containers
                     , simple-semigroupoids

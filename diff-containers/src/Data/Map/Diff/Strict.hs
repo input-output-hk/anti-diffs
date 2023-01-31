@@ -37,15 +37,6 @@ module Data.Map.Diff.Strict (
   , null
     -- * Class instances for @'DiffHistory'@
   , areInverses
-    -- * Values and keys
-  , Keys (..)
-  , Values (..)
-  , castKeys
-  , diffKeys
-  , keysFromList
-  , restrictValues
-  , valuesFromList
-  , valuesKeys
     -- * Applying diffs
   , ApplyDiffError (..)
   , applyDiff
@@ -162,9 +153,9 @@ nonEmptyDiffHistory (DiffHistory sq) = NEDiffHistory <$> NESeq.nonEmptySeq sq
   Construction
 ------------------------------------------------------------------------------}
 
--- | Compute the difference between @'Values'@.
-diff :: (Ord k, Eq v) => Values k v -> Values k v -> Diff k v
-diff (Values m1) (Values m2) = Diff $
+-- | Compute the difference between @'Map'@s.
+diff :: (Ord k, Eq v) => Map k v -> Map k v -> Diff k v
+diff m1 m2 = Diff $
     Merge.merge
       (Merge.mapMissing $ \_k v -> singletonDelete v)
       (Merge.mapMissing $ \_k v -> singletonInsert v)
@@ -300,43 +291,10 @@ areInverses :: Eq v => DiffEntry v -> DiffEntry v -> Bool
 areInverses e1 e2 = invertDiffEntry e1 == e2
 
 {------------------------------------------------------------------------------
-  Values and keys
-------------------------------------------------------------------------------}
-
--- | A key-value store.
-newtype Values k v = Values (Map k v)
-  deriving stock (Generic, Show, Eq, Functor)
-  deriving newtype (Semigroup, Monoid)
-  deriving anyclass (NoThunks)
-
-newtype Keys k v = Keys (Set k)
-  deriving stock (Generic, Show, Eq, Functor)
-  deriving newtype (Semigroup, Monoid)
-  deriving anyclass (NoThunks)
-
-valuesFromList :: Ord k => [(k, v)] -> Values k v
-valuesFromList = Values . Map.fromList
-
-keysFromList :: Ord k => [k] -> Keys k v
-keysFromList = Keys . Set.fromList
-
-diffKeys :: Diff k v -> Keys k v
-diffKeys (Diff m) = Keys $ Map.keysSet m
-
-valuesKeys :: Values k v -> Keys k v
-valuesKeys (Values m) = Keys $ Map.keysSet m
-
-restrictValues :: Ord k => Values k v -> Keys k v -> Values k v
-restrictValues (Values m) (Keys s) = Values (Map.restrictKeys m s)
-
-castKeys :: Keys k v -> Keys k v'
-castKeys (Keys s) = Keys s
-
-{------------------------------------------------------------------------------
   Applying diffs
 ------------------------------------------------------------------------------}
 
--- | Applies a diff to values.
+-- | Applies a diff to a @'Map'@.
 --
 -- This function throws an error if an @Unsafe@ diff entry like
 -- @'UnsafeAntiInsert'@ or @'UnsafeAntiDelete'@ is found. These @Unsafe@ diff
@@ -357,15 +315,15 @@ castKeys (Keys s) = Keys s
 -- can keep track of exactly which era translations have happened.
 applyDiff ::
      Ord k
-  => Values k v
+  => Map k v
   -> Diff k v
-  -> Values k v
-applyDiff (Values values) (Diff diffs) = Values $
+  -> Map k v
+applyDiff m (Diff diffs) =
     Merge.merge
       Merge.preserveMissing
       (Merge.mapMaybeMissing     newKeys)
       (Merge.zipWithMaybeMatched oldKeys)
-      values
+      m
       diffs
   where
     newKeys :: k -> NEDiffHistory v -> Maybe v
@@ -382,20 +340,20 @@ applyDiff (Values values) (Diff diffs) = Values $
       UnsafeAntiInsert _x -> error "Can not apply UnsafeAntiInsert diff"
       UnsafeAntiDelete _x -> error "Can not apply UnsafeAntiDelete diff"
 
--- | Applies a diff to values for a specific set of keys.
+-- | Applies a diff to a @'Map'@ for a specific set of keys.
 --
 -- See @'applyDiff'@ for more information about the scenarios in which
 -- @'applyDiffForKeys'@ fail.
 applyDiffForKeys ::
      Ord k
-  => Values k v
-  -> Keys k v
+  => Map k v
+  -> Set k
   -> Diff k v
-  -> Values k v
-applyDiffForKeys v@(Values values) (Keys keys) (Diff diffs) =
+  -> Map k v
+applyDiffForKeys m ks (Diff diffs) =
   applyDiff
-    v
-    (Diff $ diffs `Map.restrictKeys` (Map.keysSet values `Set.union` keys))
+    m
+    (Diff $ diffs `Map.restrictKeys` (Map.keysSet m `Set.union` ks))
 
 data ApplyDiffError k v =
     FoldToActFailed k (NEDiffHistory v)
@@ -407,24 +365,24 @@ data ApplyDiffError k v =
   | InsDelMatchingKey k v (NEDiffHistory v)
   deriving (Show, Eq)
 
--- | Applies a diff to values, performs sanity checks.
+-- | Applies a diff to a @'Map'@, performs sanity checks.
 --
 -- This a /scrutinous/ version of @'applyDiff'@ in the sense that
 -- @'applyDiffScrutinous'@ performs sanity checks like (i) a diff history should
 -- be sensible (if we insert x, we can only delete x), (ii) we can not delete a
--- key from @'Values'@ if it is not already present, etc. If a sanity check
+-- key from a @'Map'@ if it is not already present, etc. If a sanity check
 -- fails, an @'ApplyDiffError'@ will be returned.
 applyDiffScrutinous ::
      forall k v. (Ord k, Eq v)
-  => Values k v
+  => Map k v
   -> Diff k v
-  -> Either (ApplyDiffError k v) (Values k v)
-applyDiffScrutinous (Values v) (Diff d) = Values <$>
+  -> Either (ApplyDiffError k v) (Map k v)
+applyDiffScrutinous m (Diff d) =
     Merge.mergeA
       Merge.preserveMissing
       (Merge.traverseMaybeMissing newKeys)
       (Merge.zipWithMaybeAMatched oldKeys)
-      v
+      m
       d
   where
     newKeys :: k -> NEDiffHistory v -> Either (ApplyDiffError k v) (Maybe v)
@@ -447,7 +405,7 @@ applyDiffScrutinous (Values v) (Diff d) = Values <$>
                    | otherwise -> Left  $ BadDelInsMatchingKey k v1 x y h
         InsDel                 -> Left  $ InsDelMatchingKey k v1 h
 
--- | Applies a diff to values for a specific set of keys, performs sanity
+-- | Applies a diff to a @'Map'@ for a specific set of keys, performs sanity
 -- checks.
 --
 -- See @'applyDiffScrutinous'@ for more information about the sanity checks
@@ -455,14 +413,14 @@ applyDiffScrutinous (Values v) (Diff d) = Values <$>
 -- @'applyDiffForKeysScrutinous'@.
 applyDiffForKeysScrutinous ::
      (Ord k, Eq v)
-  => Values k v
-  -> Keys k v
+  => Map k v
+  -> Set k
   -> Diff k v
-  -> Either (ApplyDiffError k v) (Values k v)
-applyDiffForKeysScrutinous v@(Values values) (Keys keys) (Diff diffs) =
+  -> Either (ApplyDiffError k v) (Map k v)
+applyDiffForKeysScrutinous m ks (Diff diffs) =
   applyDiffScrutinous
-    v
-    (Diff $ diffs `Map.restrictKeys` (Map.keysSet values `Set.union` keys))
+    m
+    (Diff $ diffs `Map.restrictKeys` (Map.keysSet m `Set.union` ks))
 
 {------------------------------------------------------------------------------
   Folding diff entries to concrete actions
