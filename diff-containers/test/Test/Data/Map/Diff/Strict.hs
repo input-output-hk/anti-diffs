@@ -9,6 +9,7 @@
 module Test.Data.Map.Diff.Strict (tests) where
 
 import           Data.Foldable (foldl')
+import           Data.Map.Strict (Map)
 import           Data.Maybe
 import           Data.Proxy (Proxy (Proxy))
 import           Data.Sequence.NonEmpty (NESeq (..))
@@ -48,7 +49,22 @@ tests = testGroup "Data.Map.Diff.Strict" [
           testSemigroupoidLaws
         , testGroupoidLaws
         ]
+    , testProperty "prop_diffThenApply @(Smaller Int)" $
+        prop_diffThenApply @(Smaller Int) @(Smaller Int)
+    , testProperty "prop_diffThenApply @Int" $
+        prop_diffThenApply @Int @Int
     ]
+
+{------------------------------------------------------------------------------
+  Simple properties
+------------------------------------------------------------------------------}
+
+prop_diffThenApply ::
+     (Show k, Show v, Ord k, Eq v)
+  => Map k v
+  -> Map k v
+  -> Property
+prop_diffThenApply m1 m2 = applyDiff m1 (diff m1 m2) === m2
 
 {------------------------------------------------------------------------------
   Preconditions
