@@ -9,7 +9,7 @@ license-files:
   NOTICE
 copyright:           2022 Input Output (Hong Kong) Ltd.
 author:              Joris Dral
-maintainer:
+maintainer:          operations@iohk.io
 category:            Control, Testing
 build-type:          Simple
 tested-with:           GHC == { 8.10.7, 9.2.5 }
