@@ -33,27 +33,21 @@ module Data.Map.Diff.Strict (
     -- * Class instances for @'DiffHistory'@
   , areInverses
     -- * Applying diffs
-  , ApplyDiffError (..)
   , applyDiff
   , applyDiffForKeys
-  , applyDiffForKeysScrutinous
-  , applyDiffScrutinous
-    -- * Folds over actions
-  , Act (..)
-  , foldMapAct
-  , traverseActs_
+    -- * Folds and traversals
   , traverseLastDiffEntries
   , unsafeFoldMapDiffEntry
   ) where
 
 import           Prelude hiding (last, length, null, splitAt)
 
+import           Control.Monad (void)
 import           Data.Bifunctor
 import           Data.Group
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Semigroupoid.Simple
 import           Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import           Data.Sequence.NonEmpty (NESeq (..))
@@ -237,19 +231,6 @@ areInverses e1 e2 = invertDiffEntry e1 == e2
 ------------------------------------------------------------------------------}
 
 -- | Applies a diff to a @'Map'@.
---
--- FIXME(jdral): In this section, we distinguish between scrutinous and
--- non-scrutinous application of diffs. For now, `consensus` libraries uses the
--- non-scrutinous version, since the scrutinous version will consistently throw
--- errors as sanity checks fail due to era translations and the multi-era nature
--- of on-disk ledger values like the UTxO. In particular, a UTxO that is read
--- from disk can either be from the current era, but also any one era before it.
--- A UTxO is translated to the current era such that we can use it in the
--- current era's ledger rules, but this translation information is then lost. A
--- translation to a new era is essentially an update, and as such should be
--- reflected in diffs, but that is currently not the case. We should use the
--- scrutinous version once the ledger implements tracking maps, in which case we
--- can keep track of exactly which era translations have happened.
 applyDiff ::
      Ord k
   => Map k v
@@ -274,9 +255,6 @@ applyDiff m (Diff diffs) =
       Delete _x -> Nothing
 
 -- | Applies a diff to a @'Map'@ for a specific set of keys.
---
--- See @'applyDiff'@ for more information about the scenarios in which
--- @'applyDiffForKeys'@ fail.
 applyDiffForKeys ::
      Ord k
   => Map k v
@@ -288,184 +266,21 @@ applyDiffForKeys m ks (Diff diffs) =
     m
     (Diff $ diffs `Map.restrictKeys` (Map.keysSet m `Set.union` ks))
 
-data ApplyDiffError k v =
-    FoldToActFailed k (NEDiffHistory v)
-  | DelMissingKey k v (NEDiffHistory v)
-  | DelInsMissingKey k v v (NEDiffHistory v)
-  | InsMatchingKey k v v (NEDiffHistory v)
-  | BadDelMatchingKey k v v (NEDiffHistory v)
-  | BadDelInsMatchingKey k v v v (NEDiffHistory v)
-  | InsDelMatchingKey k v (NEDiffHistory v)
-  deriving (Show, Eq)
-
--- | Applies a diff to a @'Map'@, performs sanity checks.
---
--- This a /scrutinous/ version of @'applyDiff'@ in the sense that
--- @'applyDiffScrutinous'@ performs sanity checks like (i) a diff history should
--- be sensible (if we insert x, we can only delete x), (ii) we can not delete a
--- key from a @'Map'@ if it is not already present, etc. If a sanity check
--- fails, an @'ApplyDiffError'@ will be returned.
-applyDiffScrutinous ::
-     forall k v. (Ord k, Eq v)
-  => Map k v
-  -> Diff k v
-  -> Either (ApplyDiffError k v) (Map k v)
-applyDiffScrutinous m (Diff d) =
-    Merge.mergeA
-      Merge.preserveMissing
-      (Merge.traverseMaybeMissing newKeys)
-      (Merge.zipWithMaybeAMatched oldKeys)
-      m
-      d
-  where
-    newKeys :: k -> NEDiffHistory v -> Either (ApplyDiffError k v) (Maybe v)
-    newKeys k h = case foldToAct h of
-      Nothing -> Left $ FoldToActFailed k h
-      Just a  -> case a of
-        Ins x      -> Right $ Just x
-        Del x      -> Left  $ DelMissingKey k x h
-        DelIns x y -> Left  $ DelInsMissingKey k x y h
-        InsDel     -> Right   Nothing
-
-    oldKeys :: k -> v -> NEDiffHistory v -> Either (ApplyDiffError k v) (Maybe v)
-    oldKeys k v1 h = case foldToAct h of
-      Nothing -> Left $ FoldToActFailed k h
-      Just a  -> case a of
-        Ins x                  -> Left  $ InsMatchingKey k v1 x h
-        Del x      | x == v1   -> Right   Nothing
-                   | otherwise -> Left  $ BadDelMatchingKey k v1 x h
-        DelIns x y | x == v1   -> Right $ Just y
-                   | otherwise -> Left  $ BadDelInsMatchingKey k v1 x y h
-        InsDel                 -> Left  $ InsDelMatchingKey k v1 h
-
--- | Applies a diff to a @'Map'@ for a specific set of keys, performs sanity
--- checks.
---
--- See @'applyDiffScrutinous'@ for more information about the sanity checks
--- this function performs, and how this affects the result of
--- @'applyDiffForKeysScrutinous'@.
-applyDiffForKeysScrutinous ::
-     (Ord k, Eq v)
-  => Map k v
-  -> Set k
-  -> Diff k v
-  -> Either (ApplyDiffError k v) (Map k v)
-applyDiffForKeysScrutinous m ks (Diff diffs) =
-  applyDiffScrutinous
-    m
-    (Diff $ diffs `Map.restrictKeys` (Map.keysSet m `Set.union` ks))
-
 {------------------------------------------------------------------------------
-  Folding diff entries to concrete actions
+  Folds and traversals
 ------------------------------------------------------------------------------}
 
--- | A diff action to apply to a key-value pair.
-data Act v = Del !v | Ins !v | DelIns !v !v | InsDel
-  deriving stock (Generic, Show, Eq, Functor)
-  deriving anyclass (NoThunks)
-
-instance Eq v => Semigroupoid (Act v) where
-    l <>? r = case l of
-        Del x -> case r of
-            Del{}    -> Nothing   -- disallow double delete
-            Ins y    -> Just $ DelIns x y
-
-            DelIns{} -> Nothing   -- disallow double delete
-
-            InsDel   -> Just $ Del x
-
-        Ins x -> case r of
-            Del y ->
-                if x /= y then Nothing   -- disallow inaccurate delete
-                else Just InsDel
-            Ins{} -> Nothing   -- disallow overwrite
-
-            DelIns y z ->
-                if x /= y then Nothing   -- disallow inaccurate delete
-                else Just $ Ins z
-
-            InsDel{} -> Nothing   -- disallow overwrite
-
-        DelIns x y -> case r of
-            Del z ->
-                if y /= z then Nothing   -- disallow inaccurate delete
-                else Just $ Del x
-            Ins{} -> Nothing   -- disallow overwrite
-
-            DelIns z aa ->
-                if y /= z then Nothing   -- disallow inaccurate delete
-                else Just $ DelIns x aa
-
-            InsDel{} -> Nothing   -- disallow overwrite
-
-        InsDel -> case r of
-            Del{}    -> Nothing   -- disallow double delete
-            Ins x    -> Just $ Ins x
-
-            DelIns{} -> Nothing   -- disallow double delete
-
-            InsDel   -> Just InsDel
-
-instance Eq v => Groupoid (Act v) where
-  pinv = \case
-      Del v      -> Ins v
-      Ins v      -> Del v
-
-      DelIns x y -> DelIns y x
-
-      InsDel     -> InsDel
-
--- | Given a valid @'NEDiffHistory'@, its @'DiffEntry'@s should fold to a sensible
--- @'Act'@.
---
--- Note: Only @'Insert'@s and @'Delete'@s translate to an @'Act'@.
---
--- Note: For a diff history to be valid, the diff entries in the diff history
--- should not fail to fold to a sensible action.
-foldToAct :: Eq v => NEDiffHistory v -> Maybe (Act v)
-foldToAct (NEDiffHistory (z NESeq.:<|| zs)) =
-    foldl (\x y -> pappendM x (fromDiffEntry y)) (fromDiffEntry z) zs
-  where
-    fromDiffEntry = \case
-      Insert x            -> Just $ Ins x
-      Delete x            -> Just $ Del x
-
--- | Like @'foldToAct'@, but errors if the fold fails.
-unsafeFoldToAct :: Eq v => NEDiffHistory v -> Act v
-unsafeFoldToAct dh = case foldToAct dh of
-  Nothing  -> error "Could not fold diff history to a sensible action."
-  Just act -> act
-
--- | Traverse over folded actions and discard the result.
---
--- Note: Errors if a fold of a diff history to an action fails.
-traverseActs_ ::
-     (Applicative t, Eq v)
-  => (k -> Act v -> t a)
-  -> Diff k v
-  -> t ()
-traverseActs_ f (Diff m) = () <$ Map.traverseWithKey g m
-  where
-    g k dh = f k (unsafeFoldToAct dh)
-
-foldMapAct :: (Monoid m, Eq v) => (Act v -> m) -> Diff k v -> Maybe m
-foldMapAct f (Diff m) = foldMap (fmap f . foldToAct)  m
-
 -- | @'foldMap'@ over the last diff entry in each diff history.
---
--- Deemed unsafe, because the diff history can be invalid and we bypass the
--- validity check.
 unsafeFoldMapDiffEntry :: (Monoid m) => (DiffEntry v -> m) -> Diff k v -> m
 unsafeFoldMapDiffEntry f (Diff m) =
   foldMap (f . NESeq.last . getNEDiffHistory) m
 
--- | Like @'traverseActs_'@, but traverses over the last diff entry in each diff
--- history, instead of folded actions.
+-- | Traversal with keys over the last diff entry in each diff history.
 traverseLastDiffEntries ::
      Applicative t
   => (k -> DiffEntry v -> t a)
   -> Diff k v
   -> t ()
-traverseLastDiffEntries f (Diff m) = () <$ Map.traverseWithKey g m
+traverseLastDiffEntries f (Diff m) = void $ Map.traverseWithKey g m
   where
     g k dh = f k (last dh)
