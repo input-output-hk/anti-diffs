@@ -88,14 +88,9 @@ newtype NEDiffHistory v = NEDiffHistory { getNEDiffHistory :: NESeq (DiffEntry v
   deriving newtype (NoThunks)
 
 -- | A change to a value in a key-value store.
---
--- Note: The @Anti-@ constructors are only used to cancel out entries in a diff
--- history. These constructors should not be exposed from the module.
 data DiffEntry v =
       Insert !v
     | Delete !v
-    | UnsafeAntiInsert !v
-    | UnsafeAntiDelete !v
   deriving stock (Generic, Show, Eq, Functor, Foldable)
   deriving anyclass (NoThunks)
 
@@ -197,28 +192,14 @@ instance (Ord k, Eq v) => Group (Diff k v) where
 ------------------------------------------------------------------------------}
 
 -- | @h1 <> h2@ sums @h1@ and @h2@ by cancelling out as many consecutive diff
--- entries as possible.
+-- entries as possible, and appending the remainders.
 --
--- Diff entries that are each other's inverse can cancel out. In this case, both
--- diff entries are removed from the diff history.
---
--- Examples:
--- > [Insert 1, AntiDelete 2] <> [Delete 2, AntiInsert 1] = []
---
--- > [Insert 1, Delete 2]     <> [AntiDelete 2, Delete 3] = [Insert 1, Delete 3]
---
--- > [Insert 1, AntiInsert 1] <> [] = [Ins 1, AntiInsert 1]
---
--- Note: This implementation does not make any assumptions about the inputs it
--- is given, and the results it produces. Because of this, the resulting diff
--- history can be nonsenical. To illustrate, consider example 2 given above: how
--- could we expect to delete a value @3@ if we inserted a value @1@? As such, it
--- is the using code's responsibility to ensure that the inputs given to the sum
--- lead to sensible results.
+-- Diff entries that are each other's inverse can cancel out: @'Delete'@ cancels
+-- out any @'Insert' x@, and vice versa.
 --
 -- Note: We do not cancel out consecutive elements in @h1@ and @h2@
 -- individually. It is only at the border between @h1@ and @h2@ that we cancel
--- out elements (see the third example given above).
+-- out elements.
 instance Eq v => Semigroup (DiffHistory v) where
   DiffHistory s1 <> DiffHistory s2 = DiffHistory $ s1 `mappend'` s2
     where
@@ -241,10 +222,8 @@ instance Eq v => Group (DiffHistory v) where
 -- identity element, so it is not a @Monoid@ or @Semigroup@.
 invertDiffEntry :: DiffEntry v -> DiffEntry v
 invertDiffEntry = \case
-  Insert x           -> UnsafeAntiInsert x
-  Delete x           -> UnsafeAntiDelete x
-  UnsafeAntiInsert x -> Insert x
-  UnsafeAntiDelete x -> Delete x
+  Insert x           -> Delete x
+  Delete x           -> Insert x
 
 -- | @'areInverses e1 e2@ checks whether @e1@ and @e2@ are each other's inverse.
 --
@@ -258,11 +237,6 @@ areInverses e1 e2 = invertDiffEntry e1 == e2
 ------------------------------------------------------------------------------}
 
 -- | Applies a diff to a @'Map'@.
---
--- This function throws an error if an @Unsafe@ diff entry like
--- @'UnsafeAntiInsert'@ or @'UnsafeAntiDelete'@ is found. These @Unsafe@ diff
--- entries can not be applied, but are necessary for the @'Group'@ instance of
--- the @'Diff'@ datatype.
 --
 -- FIXME(jdral): In this section, we distinguish between scrutinous and
 -- non-scrutinous application of diffs. For now, `consensus` libraries uses the
@@ -291,17 +265,13 @@ applyDiff m (Diff diffs) =
   where
     newKeys :: k -> NEDiffHistory v -> Maybe v
     newKeys _k h = case last h of
-      Insert x            -> Just x
-      Delete _x           -> Nothing
-      UnsafeAntiInsert _x -> error "Can not apply UnsafeAntiInsert diff"
-      UnsafeAntiDelete _x -> error "Can not apply UnsafeAntiDelete diff"
+      Insert x  -> Just x
+      Delete _x -> Nothing
 
     oldKeys :: k -> v -> NEDiffHistory v -> Maybe v
     oldKeys _k _v1 h = case last h of
-      Insert x            -> Just x
-      Delete _x           -> Nothing
-      UnsafeAntiInsert _x -> error "Can not apply UnsafeAntiInsert diff"
-      UnsafeAntiDelete _x -> error "Can not apply UnsafeAntiDelete diff"
+      Insert x  -> Just x
+      Delete _x -> Nothing
 
 -- | Applies a diff to a @'Map'@ for a specific set of keys.
 --
@@ -459,8 +429,6 @@ foldToAct (NEDiffHistory (z NESeq.:<|| zs)) =
     fromDiffEntry = \case
       Insert x            -> Just $ Ins x
       Delete x            -> Just $ Del x
-      UnsafeAntiInsert _x -> Nothing
-      UnsafeAntiDelete _x -> Nothing
 
 -- | Like @'foldToAct'@, but errors if the fold fails.
 unsafeFoldToAct :: Eq v => NEDiffHistory v -> Act v

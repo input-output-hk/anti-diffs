@@ -114,14 +114,10 @@ instance Arbitrary v => Arbitrary (DiffEntry v) where
   arbitrary = oneof [
       Insert <$> arbitrary
     , Delete <$> arbitrary
-    , UnsafeAntiInsert <$> arbitrary
-    , UnsafeAntiDelete <$> arbitrary
     ]
   shrink = \case
     Insert x           -> Insert <$> shrink x
     Delete x           -> Delete <$> shrink x
-    UnsafeAntiInsert x -> UnsafeAntiInsert <$> shrink x
-    UnsafeAntiDelete x -> UnsafeAntiDelete <$> shrink x
 
 instance Arbitrary v => Arbitrary (Act v) where
   arbitrary = oneof [
