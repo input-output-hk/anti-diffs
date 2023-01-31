@@ -11,5 +11,6 @@ repository cardano-haskell-packages
     d4a35cd3121aa00d18544bb0ac01c3e1691d618f462c46129271bccf39f7e8ee
 
 packages:
-  ./anti-diff
+  ./diff-containers
+  ./fingertree-rm
   ./simple-semigroupoids

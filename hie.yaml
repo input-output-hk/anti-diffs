@@ -1,16 +1,19 @@
 cradle:
   cabal:
-    - path: "./anti-diff/src"
-      component: "lib:anti-diff"
+    - path: "./diff-containers/src"
+      component: "lib:diff-containers"
 
-    - path: "./anti-diff/test"
-      component: "anti-diff:test:test"
+    - path: "./diff-containers/test"
+      component: "diff-containers:test:test"
 
-    - path: "./anti-diff/bench/Main.hs"
-      component: "anti-diff:bench:bench"
+    - path: "./fingertree-rm/src"
+      component: "lib:fingertree-rm"
 
-    - path: "./anti-diff/bench/Bench/Data/FingerTree/RootMeasured/Strict.hs"
-      component: "anti-diff:bench:bench"
+    - path: "./fingertree-rm/test"
+      component: "fingertree-rm:test:test"
+
+    - path: "./fingertree-rm/bench"
+      component: "fingertree-rm:bench:bench"
 
     - path: "./simple-semigroupoids/src"
       component: "lib:simple-semigroupoids"
