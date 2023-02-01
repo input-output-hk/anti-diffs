@@ -77,8 +77,8 @@ prop_diffThenApply m1 m2 = applyDiff m1 (diff m1 m2) === m2
 -- other words, we can normalise the diff history further by cancelling out the
 -- diff entries. If so, we can conclude that the input diff history is not in
 -- normal form.
-isNormal :: (Foldable t, Eq v) => UnsafeDiffHistory t v -> Bool
-isNormal (UnsafeDiffHistory vs) =
+isNormal :: Eq v => DiffHistory v -> Bool
+isNormal (DiffHistory vs) =
     snd $ foldl' f (Nothing, True) vs
   where
     f (prevMay, b) cur = case prevMay of
@@ -101,13 +101,13 @@ deriving newtype instance (Ord k, Eq v, Arbitrary k, Arbitrary v)
 
 instance (Arbitrary v, Eq v) => Arbitrary (NEDiffHistory v) where
   arbitrary = (NEDiffHistory <$> ((:<||) <$> arbitrary <*> arbitrary))
-    `suchThat` (\(MkNEDiffHistory h) -> isNormal h)
+    `suchThat` (isNormal . toDiffHistory)
   shrink (NEDiffHistory h) =
     fmap NEDiffHistory $ mapMaybe NESeq.nonEmptySeq $ shrink (NESeq.toSeq h)
 
 instance (Arbitrary v, Eq v) => Arbitrary (DiffHistory v) where
   arbitrary = (DiffHistory <$> arbitrary)
-    `suchThat` (\(MkDiffHistory h) -> isNormal h)
+    `suchThat` isNormal
   shrink (DiffHistory s) = DiffHistory <$> shrink s
 
 instance Arbitrary v => Arbitrary (DiffEntry v) where

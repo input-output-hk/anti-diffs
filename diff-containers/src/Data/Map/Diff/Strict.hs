@@ -6,20 +6,15 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE PatternSynonyms            #-}
 {-# LANGUAGE Rank2Types                 #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE ViewPatterns               #-}
 
 module Data.Map.Diff.Strict (
     Diff (..)
   , DiffEntry (..)
-  , DiffHistory (.., DiffHistory)
-  , NEDiffHistory (.., NEDiffHistory)
-  , UnsafeDiffHistory (..)
-  , unDiffHistory
-  , unNEDiffHistory
+  , DiffHistory (..)
+  , NEDiffHistory (..)
     -- * Conversions between empty and non-empty diff histories
   , nonEmptyDiffHistory
   , toDiffHistory
@@ -54,7 +49,6 @@ module Data.Map.Diff.Strict (
 import           Prelude hiding (last, length, null, splitAt)
 
 import           Data.Bifunctor
-import           Data.Foldable (toList)
 import           Data.Group
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
@@ -64,20 +58,17 @@ import           Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import           Data.Sequence.NonEmpty (NESeq (..))
 import qualified Data.Sequence.NonEmpty as NESeq
+import           Data.Sequence.NonEmpty.Extra ()
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           GHC.Generics (Generic)
-import           NoThunks.Class (NoThunks (..), noThunksInValues)
+import           NoThunks.Class (NoThunks (..))
 
 {------------------------------------------------------------------------------
-  General-purposes diffs for key-value stores
+  Types
 ------------------------------------------------------------------------------}
 
 -- | A diff for key-value stores.
---
--- INVARIANT: A key @k@ is present in the @'Map'@, iff the corresponding
--- @'DiffHistory'@ is non-empty. This prevents the @'Map'@ from getting bloated with
--- empty diff histories.
 newtype Diff k v = Diff (Map k (NEDiffHistory v))
   deriving stock (Generic, Show, Eq, Functor)
   deriving anyclass (NoThunks)
@@ -87,42 +78,14 @@ newtype Diff k v = Diff (Map k (NEDiffHistory v))
 -- A history has an implicit sense of ordering according to time: from left to
 -- right. This means that the leftmost element in the history is the /earliest/
 -- change, while the rightmost element in the history is the /latest/ change.
-newtype UnsafeDiffHistory t v = UnsafeDiffHistory (t (DiffEntry v))
-  deriving stock (Generic, Functor, Foldable)
+newtype DiffHistory v = DiffHistory { getDiffHistory :: Seq (DiffEntry v) }
+  deriving stock (Generic, Show, Eq, Functor, Foldable)
+  deriving newtype (NoThunks)
 
-deriving stock instance Show v => Show (UnsafeDiffHistory Seq v)
-deriving stock instance Show v => Show (UnsafeDiffHistory NESeq v)
-deriving stock instance Eq v => Eq (UnsafeDiffHistory Seq v)
-deriving stock instance Eq v => Eq (UnsafeDiffHistory NESeq v)
-
-{-# COMPLETE DiffHistory #-}
-
-newtype DiffHistory v = MkDiffHistory (UnsafeDiffHistory Seq v)
-  deriving stock (Generic, Show, Eq, Functor)
-  deriving newtype (NoThunks, Foldable)
-
-{-# COMPLETE NEDiffHistory #-}
-
--- | A non-empty diff history.
-newtype NEDiffHistory v = MkNEDiffHistory (UnsafeDiffHistory NESeq v)
-  deriving stock (Generic, Show, Eq, Functor)
-  deriving newtype (NoThunks, Foldable)
-
-pattern DiffHistory :: Seq (DiffEntry v) -> DiffHistory v
-pattern DiffHistory { unDiffHistory } =
-  MkDiffHistory (UnsafeDiffHistory unDiffHistory)
-
-pattern NEDiffHistory :: NESeq (DiffEntry v) -> NEDiffHistory v
-pattern NEDiffHistory { unNEDiffHistory } =
-  MkNEDiffHistory (UnsafeDiffHistory unNEDiffHistory)
-
--- | Instance for @'Seq'@ checks elements only
---
--- The internal fingertree in @'Seq'@ might have thunks, which is essential for
--- its asymptotic complexity.
-instance (NoThunks v, Foldable t) => NoThunks (UnsafeDiffHistory t v) where
-  showTypeOf _ = "DiffHistory"
-  wNoThunks ctxt = noThunksInValues ctxt . toList
+-- | A non-empty @'DiffHistory'@.
+newtype NEDiffHistory v = NEDiffHistory { getNEDiffHistory :: NESeq (DiffEntry v) }
+  deriving stock (Generic, Show, Eq, Functor, Foldable)
+  deriving newtype (NoThunks)
 
 -- | A change to a value in a key-value store.
 --
@@ -197,7 +160,7 @@ singletonDelete = singleton . Delete
 ------------------------------------------------------------------------------}
 
 last :: NEDiffHistory v -> DiffEntry v
-last (unNEDiffHistory -> _ NESeq.:||> e) = e
+last (getNEDiffHistory -> _ NESeq.:||> e) = e
 
 {------------------------------------------------------------------------------
   Predicates
@@ -526,7 +489,7 @@ foldMapAct f (Diff m) = foldMap (fmap f . foldToAct)  m
 -- validity check.
 unsafeFoldMapDiffEntry :: (Monoid m) => (DiffEntry v -> m) -> Diff k v -> m
 unsafeFoldMapDiffEntry f (Diff m) =
-  foldMap (f . NESeq.last . unNEDiffHistory) m
+  foldMap (f . NESeq.last . getNEDiffHistory) m
 
 -- | Like @'traverseActs_'@, but traverses over the last diff entry in each diff
 -- history, instead of folded actions.
