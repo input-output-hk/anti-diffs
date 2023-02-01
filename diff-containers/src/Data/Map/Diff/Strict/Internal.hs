@@ -11,33 +11,49 @@
 {-# LANGUAGE ViewPatterns               #-}
 
 module Data.Map.Diff.Strict.Internal (
+    -- * Types
     Diff (..)
   , DiffEntry (..)
   , DiffHistory (..)
   , NEDiffHistory (..)
-    -- * Conversions between empty and non-empty diff histories
+    -- * Conversion
+  , keysSet
+    -- ** Diff histories
   , nonEmptyDiffHistory
   , toDiffHistory
   , unsafeFromDiffHistory
     -- * Construction
   , diff
+    -- ** Maps
+  , fromMap
+  , fromMapDeletes
+  , fromMapInserts
+    -- ** Lists
   , fromList
   , fromListDeletes
-  , fromListEntries
+  , fromListDiffHistories
   , fromListInserts
+    -- ** Diff histories
   , singleton
   , singletonDelete
   , singletonInsert
-    -- * Predicates
+    -- * Deconstruction
+  , last
+    -- * Query
+    -- ** Size
   , null
-    -- * Class instances for @'DiffHistory'@
+  , size
+    -- * @'Group'@ instances
   , areInverses
+  , invertDiffEntry
     -- * Applying diffs
   , applyDiff
   , applyDiffForKeys
     -- * Folds and traversals
   , foldMapDiffEntry
   , traverseDiffEntryWithKey_
+    -- * Filter
+  , filterOnlyKey
   ) where
 
 import           Prelude hiding (last, length, null, splitAt)
@@ -89,8 +105,11 @@ data DiffEntry v =
   deriving anyclass (NoThunks)
 
 {------------------------------------------------------------------------------
-  Conversions between empty and non-empty diff histories
+  Conversion
 ------------------------------------------------------------------------------}
+
+keysSet :: Diff k v -> Set k
+keysSet (Diff m) = Map.keysSet m
 
 toDiffHistory :: NEDiffHistory v -> DiffHistory v
 toDiffHistory (NEDiffHistory sq) = DiffHistory $ NESeq.toSeq sq
@@ -123,17 +142,32 @@ diff m1 m2 = Diff $
     unsafeAppend (NEDiffHistory h1) (NEDiffHistory h2) =
       NEDiffHistory $ h1 <> h2
 
-fromList :: Ord k => [(k, NEDiffHistory v)] -> Diff k v
-fromList = Diff . Map.fromList
+-- | @'fromMap' m@ creates a @'Diff'@ from the inserts and deletes in @m@.
+fromMap :: Map k (DiffEntry v) -> Diff k v
+fromMap = Diff . fmap singleton
 
-fromListEntries :: Ord k => [(k, DiffEntry v)] -> Diff k v
-fromListEntries = fromList . fmap (second singleton)
+-- | @'fromMapInserts' m@ creates a @'Diff'@ that inserts all values in @m@.
+fromMapInserts :: Map k v -> Diff k v
+fromMapInserts = Diff . fmap singletonInsert
 
+-- | @'fromMapDeletes' m@ creates a @'Diff'@ that deletes all values in @m@.
+fromMapDeletes :: Map k v -> Diff k v
+fromMapDeletes = Diff . fmap singletonDelete
+
+fromListDiffHistories :: Ord k => [(k, NEDiffHistory v)] -> Diff k v
+fromListDiffHistories = Diff . Map.fromList
+
+-- | @'fromList' xs@ creates a @'Diff'@ from the inserts and deletes in @xs@.
+fromList :: Ord k => [(k, DiffEntry v)] -> Diff k v
+fromList = fromListDiffHistories . fmap (second singleton)
+
+-- | @'fromListInserts' xs@ creates a @'Diff'@ that inserts all values in @xs@.
 fromListInserts :: Ord k => [(k, v)] -> Diff k v
-fromListInserts = fromList . fmap (second singletonInsert)
+fromListInserts = fromListDiffHistories . fmap (second singletonInsert)
 
+-- | @'fromListDeletes' xs@ creates a @'Diff'@ that deletes all values in @xs@.
 fromListDeletes :: Ord k => [(k, v)] -> Diff k v
-fromListDeletes = fromList . fmap (second singletonDelete)
+fromListDeletes = fromListDiffHistories . fmap (second singletonDelete)
 
 singleton :: DiffEntry v -> NEDiffHistory v
 singleton = NEDiffHistory . NESeq.singleton
@@ -152,15 +186,17 @@ last :: NEDiffHistory v -> DiffEntry v
 last (getNEDiffHistory -> _ NESeq.:||> e) = e
 
 {------------------------------------------------------------------------------
-  Predicates
+  Query
 ------------------------------------------------------------------------------}
 
 null :: Diff k v -> Bool
 null (Diff m) = Map.null m
 
+size :: Diff k v -> Int
+size (Diff m) = Map.size m
 
 {------------------------------------------------------------------------------
-  Class instances for @'Diff'@
+  @'Group'@ instances
 ------------------------------------------------------------------------------}
 
 instance (Ord k, Eq v) => Semigroup (Diff k v) where
@@ -180,10 +216,6 @@ instance (Ord k, Eq v) => Monoid (Diff k v) where
 instance (Ord k, Eq v) => Group (Diff k v) where
   invert (Diff m) = Diff $
     fmap (unsafeFromDiffHistory . invert . toDiffHistory) m
-
-{------------------------------------------------------------------------------
-  Class instances for @'DiffHistory'@
-------------------------------------------------------------------------------}
 
 -- | @h1 <> h2@ sums @h1@ and @h2@ by cancelling out as many consecutive diff
 -- entries as possible, and appending the remainders.
@@ -216,8 +248,8 @@ instance Eq v => Group (DiffHistory v) where
 -- identity element, so it is not a @Monoid@ or @Semigroup@.
 invertDiffEntry :: DiffEntry v -> DiffEntry v
 invertDiffEntry = \case
-  Insert x           -> Delete x
-  Delete x           -> Insert x
+  Insert x -> Delete x
+  Delete x -> Insert x
 
 -- | @'areInverses e1 e2@ checks whether @e1@ and @e2@ are each other's inverse.
 --
@@ -284,3 +316,10 @@ traverseDiffEntryWithKey_ ::
 traverseDiffEntryWithKey_ f (Diff m) = void $ Map.traverseWithKey g m
   where
     g k dh = f k (last dh)
+
+{-------------------------------------------------------------------------------
+  Filter
+-------------------------------------------------------------------------------}
+
+filterOnlyKey :: (k -> Bool) -> Diff k v -> Diff k v
+filterOnlyKey f (Diff m) = Diff $ Map.filterWithKey (const . f) m
