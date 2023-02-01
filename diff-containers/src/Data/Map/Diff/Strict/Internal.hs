@@ -10,7 +10,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE ViewPatterns               #-}
 
-module Data.Map.Diff.Strict (
+module Data.Map.Diff.Strict.Internal (
     Diff (..)
   , DiffEntry (..)
   , DiffHistory (..)
