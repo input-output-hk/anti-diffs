@@ -45,10 +45,6 @@ tests = testGroup "Data.Map.Diff.Strict" [
           testSemigroupoidLaws
         , testGroupoidLaws
         ]
-    , testGroupWithProxy (Proxy @(Act (Smaller Int))) [
-          testSemigroupoidLaws
-        , testGroupoidLaws
-        ]
     , testProperty "prop_diffThenApply @(Smaller Int)" $
         prop_diffThenApply @(Smaller Int) @(Smaller Int)
     , testProperty "prop_diffThenApply @Int" $
@@ -118,16 +114,3 @@ instance Arbitrary v => Arbitrary (DiffEntry v) where
   shrink = \case
     Insert x           -> Insert <$> shrink x
     Delete x           -> Delete <$> shrink x
-
-instance Arbitrary v => Arbitrary (Act v) where
-  arbitrary = oneof [
-      Ins <$> arbitrary
-    , Del <$> arbitrary
-    , pure InsDel
-    , DelIns <$> arbitrary <*> arbitrary
-    ]
-  shrink = \case
-    Ins x      -> Ins <$> shrink x
-    Del x      -> Del <$> shrink x
-    InsDel     -> []
-    DelIns x y -> DelIns <$> shrink x <*> shrink y

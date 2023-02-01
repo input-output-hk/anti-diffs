@@ -27,7 +27,6 @@ library
                     , groups
                     , nonempty-containers
                     , nothunks
-                    , simple-semigroupoids
 
   ghc-options:        -Wall
                       -Wcompat
