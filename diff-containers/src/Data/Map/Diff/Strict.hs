@@ -1,6 +1,6 @@
 module Data.Map.Diff.Strict (
     -- * Types
-    Diff
+    Diff (..)
   , DiffEntry (..)
     -- * Conversion
   , keysSet
@@ -21,9 +21,10 @@ module Data.Map.Diff.Strict (
     -- * Applying diffs
   , applyDiff
   , applyDiffForKeys
-    -- * Folds and traversals
-  , foldMapDiffEntry
+    -- * Traversal
   , traverseDiffEntryWithKey_
+    -- * Folds
+  , foldMapDiffEntry
     -- * Filter
   , filterOnlyKey
   ) where

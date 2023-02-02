@@ -1,6 +1,5 @@
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TypeApplications           #-}
 
@@ -8,47 +7,35 @@
 
 module Test.Data.Map.Diff.Strict (tests) where
 
-import           Data.Foldable (foldl')
+import           Data.Foldable
 import           Data.Map.Strict (Map)
-import           Data.Maybe
 import           Data.Proxy (Proxy (Proxy))
-import           Data.Sequence.NonEmpty (NESeq (..))
-import qualified Data.Sequence.NonEmpty as NESeq
 
-import           Test.Tasty (TestTree, testGroup)
-import           Test.Tasty.QuickCheck
+import           Test.Tasty (TestTree, localOption, testGroup)
+import           Test.Tasty.QuickCheck hiding (Negative, Positive)
 
 import           Data.Map.Diff.Strict.Internal
-
-import           Data.Semigroupoid.Simple.Auto
 import           Data.Semigroupoid.Simple.Laws
+
+import           Test.Util
 
 tests :: TestTree
 tests = testGroup "Data.Map.Diff.Strict" [
-      testGroupWithProxy (Proxy @(DiffEntry (Smaller Int))) [
-      ]
-    , testGroupWithProxy (Proxy @(DiffHistory (Smaller Int))) [
+      localOption (QuickCheckTests 1000) $
+      testGroupWithProxy (Proxy @(Diff (OftenSmall Int) (OftenSmall Int))) [
           testSemigroupLaws
         , testMonoidLaws
-        , testGroupLaws
         ]
-    , testGroupWithProxy (Proxy @(Auto (DiffHistory (Smaller Int)))) [
-          testSemigroupoidLaws
-        , testGroupoidLaws
-        ]
-    , testGroupWithProxy (Proxy @(Diff (Smaller Int) (Smaller Int))) [
-          testSemigroupLaws
-        , testMonoidLaws
-        , testGroupLaws
-        ]
-    , testGroupWithProxy (Proxy @(Auto (Diff (Smaller Int) (Smaller Int)))) [
-          testSemigroupoidLaws
-        , testGroupoidLaws
-        ]
-    , testProperty "prop_diffThenApply @(Smaller Int)" $
-        prop_diffThenApply @(Smaller Int) @(Smaller Int)
-    , testProperty "prop_diffThenApply @Int" $
-        prop_diffThenApply @Int @Int
+    , localOption (QuickCheckTests 10000) $
+      testProperty "prop_diffThenApply" $
+        prop_diffThenApply @(OftenSmall Int) @(OftenSmall Int)
+    , localOption (QuickCheckTests 10000) $
+      testProperty "prop_applyMempty" $
+        prop_applyMempty @(OftenSmall Int) @(OftenSmall Int)
+    , localOption (QuickCheckMaxRatio 100) $
+      localOption (QuickCheckTests 1000) $
+      testProperty "prop_applyAllAndApplySum" $
+        prop_applyAllAndApplySum @(OftenSmall Int) @(OftenSmall Int)
     ]
 
 {------------------------------------------------------------------------------
@@ -62,55 +49,30 @@ prop_diffThenApply ::
   -> Property
 prop_diffThenApply m1 m2 = applyDiff m1 (diff m1 m2) === m2
 
-{------------------------------------------------------------------------------
-  Preconditions
-------------------------------------------------------------------------------}
+prop_applyMempty ::
+     (Show k, Show v, Ord k, Eq v)
+  => Map k v
+  -> Property
+prop_applyMempty m = applyDiff m mempty === m
 
--- | Check if a diff history is in normal form, where no succesive elements are
--- inverses of each other.
---
--- If two succesive diff entries are inverses, they can be cancelled out. In
--- other words, we can normalise the diff history further by cancelling out the
--- diff entries. If so, we can conclude that the input diff history is not in
--- normal form.
-isNormal :: Eq v => DiffHistory v -> Bool
-isNormal (DiffHistory vs) =
-    snd $ foldl' f (Nothing, True) vs
-  where
-    f (prevMay, b) cur = case prevMay of
-      Nothing   -> (Just cur, b)
-      Just prev -> (Just cur, b && not (areInverses prev cur))
+prop_applyAllAndApplySum ::
+     (Show k, Show v, Ord k, Eq v)
+  => Map k v
+  -> [Diff k v]
+  -> Property
+prop_applyAllAndApplySum m ds =
+  foldl' applyDiff m ds === applyDiff m (mconcat ds)
 
 {------------------------------------------------------------------------------
   Types
 ------------------------------------------------------------------------------}
 
-newtype Smaller a = Smaller a
-  deriving newtype (Show, Eq, Ord)
-
-instance Integral a => Arbitrary (Smaller a) where
-  arbitrary = Smaller . fromIntegral <$> chooseInt (-5, 5)
-  shrink (Smaller x) = Smaller . fromIntegral <$> shrink @Int (fromIntegral x)
-
-deriving newtype instance (Ord k, Eq v, Arbitrary k, Arbitrary v)
+deriving newtype instance (Ord k, Arbitrary k, Arbitrary v)
                        => Arbitrary (Diff k v)
-
-instance (Arbitrary v, Eq v) => Arbitrary (NEDiffHistory v) where
-  arbitrary = (NEDiffHistory <$> ((:<||) <$> arbitrary <*> arbitrary))
-    `suchThat` (isNormal . toDiffHistory)
-  shrink (NEDiffHistory h) =
-    fmap NEDiffHistory $ mapMaybe NESeq.nonEmptySeq $ shrink (NESeq.toSeq h)
-
-instance (Arbitrary v, Eq v) => Arbitrary (DiffHistory v) where
-  arbitrary = (DiffHistory <$> arbitrary)
-    `suchThat` isNormal
-  shrink (DiffHistory s) = DiffHistory <$> shrink s
 
 instance Arbitrary v => Arbitrary (DiffEntry v) where
   arbitrary = oneof [
       Insert <$> arbitrary
     , Delete <$> arbitrary
     ]
-  shrink = \case
-    Insert x           -> Insert <$> shrink x
-    Delete x           -> Delete <$> shrink x
+  shrink = traverse shrink

@@ -2,6 +2,7 @@ module Main (main) where
 
 import           Test.Tasty
 
+import qualified Test.Data.Map.AntiDiff.Strict
 import qualified Test.Data.Map.Diff.Strict
 
 main :: IO ()
@@ -12,7 +13,8 @@ tests =
   testGroup "Data" [
       testGroup "Map" [
           testGroup "Diff" [
-                Test.Data.Map.Diff.Strict.tests
+              Test.Data.Map.AntiDiff.Strict.tests
+            , Test.Data.Map.Diff.Strict.tests
             ]
         ]
     ]
