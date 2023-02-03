@@ -73,6 +73,6 @@ deriving newtype instance (Ord k, Arbitrary k, Arbitrary v)
 instance Arbitrary v => Arbitrary (DiffEntry v) where
   arbitrary = oneof [
       Insert <$> arbitrary
-    , Delete <$> arbitrary
+    , pure Delete
     ]
   shrink = traverse shrink

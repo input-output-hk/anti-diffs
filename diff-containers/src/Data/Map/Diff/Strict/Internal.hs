@@ -63,7 +63,7 @@ newtype Diff k v = Diff (Map k (DiffEntry v))
 -- | A change to a value in a key-value store.
 data DiffEntry v =
       Insert !v
-    | Delete !v
+    | Delete
   deriving stock (Generic, Show, Eq, Functor, Foldable, Traversable)
   deriving anyclass (NoThunks)
 
@@ -95,8 +95,8 @@ keysSet (Diff m) = Map.keysSet m
 diff :: (Ord k, Eq v) => Map k v -> Map k v -> Diff k v
 diff m1 m2 = Diff $
     Merge.merge
-      (Merge.mapMissing $ \_k v -> Delete v)
-      (Merge.mapMissing $ \_k v -> Insert v)
+      (Merge.mapMissing $ \_k _v -> Delete)
+      (Merge.mapMissing $ \_k v  -> Insert v)
       (Merge.zipWithMaybeMatched $ \ _k v1 v2 ->
         if v1 == v2 then
           Nothing
@@ -116,7 +116,7 @@ fromMapInserts = Diff . fmap Insert
 
 -- | @'fromMapDeletes' m@ creates a @'Diff'@ that deletes all values in @m@.
 fromMapDeletes :: Map k v -> Diff k v
-fromMapDeletes = Diff . fmap Delete
+fromMapDeletes = Diff . fmap (const Delete)
 
 -- | @'fromList' xs@ creates a @'Diff'@ from the inserts and deletes in @xs@.
 fromList :: Ord k => [(k, DiffEntry v)] -> Diff k v
@@ -128,7 +128,7 @@ fromListInserts = fromList . fmap (second Insert)
 
 -- | @'fromListDeletes' xs@ creates a @'Diff'@ that deletes all values in @xs@.
 fromListDeletes :: Ord k => [(k, v)] -> Diff k v
-fromListDeletes = fromList . fmap (second Delete)
+fromListDeletes = fromList . fmap (second (const Delete))
 
 {------------------------------------------------------------------------------
   Query
@@ -160,13 +160,13 @@ applyDiff m (Diff diffs) =
   where
     newKeys :: k -> DiffEntry v -> Maybe v
     newKeys _k de = case de of
-      Insert x  -> Just x
-      Delete _x -> Nothing
+      Insert x -> Just x
+      Delete   -> Nothing
 
     oldKeys :: k -> v -> DiffEntry v-> Maybe v
     oldKeys _k _v1 de = case de of
-      Insert x  -> Just x
-      Delete _x -> Nothing
+      Insert x -> Just x
+      Delete   -> Nothing
 
 -- | Applies a diff to a @'Map'@ for a specific set of keys.
 applyDiffForKeys ::

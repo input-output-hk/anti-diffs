@@ -158,7 +158,7 @@ singletonInsert :: v -> NEDiffHistory v
 singletonInsert = singleton . Insert
 
 singletonDelete :: v -> NEDiffHistory v
-singletonDelete = singleton . Delete
+singletonDelete = singleton . const Delete
 
 -- * Deconstruction
 
