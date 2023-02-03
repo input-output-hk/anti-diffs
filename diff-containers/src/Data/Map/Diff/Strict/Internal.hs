@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveAnyClass             #-}
-{-# LANGUAGE DeriveFoldable             #-}
-{-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
@@ -49,6 +48,8 @@ module Data.Map.Diff.Strict.Internal (
     -- * Applying diffs
   , applyDiff
   , applyDiffForKeys
+  , unsafeApplyDiff
+  , unsafeApplyDiffForKeys
     -- * Folds and traversals
   , foldMapDiffEntry
   , traverseDiffEntryWithKey_
@@ -60,6 +61,7 @@ import           Prelude hiding (last, length, null, splitAt)
 
 import           Control.Monad (void)
 import           Data.Bifunctor
+import           Data.Either (fromRight)
 import           Data.Group
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
@@ -89,19 +91,21 @@ newtype Diff k v = Diff (Map k (NEDiffHistory v))
 -- right. This means that the leftmost element in the history is the /earliest/
 -- change, while the rightmost element in the history is the /latest/ change.
 newtype DiffHistory v = DiffHistory { getDiffHistory :: Seq (DiffEntry v) }
-  deriving stock (Generic, Show, Eq, Functor, Foldable)
+  deriving stock (Generic, Show, Eq, Functor)
   deriving newtype (NoThunks)
 
 -- | A non-empty @'DiffHistory'@.
 newtype NEDiffHistory v = NEDiffHistory { getNEDiffHistory :: NESeq (DiffEntry v) }
-  deriving stock (Generic, Show, Eq, Functor, Foldable)
+  deriving stock (Generic, Show, Eq, Functor)
   deriving newtype (NoThunks)
 
 -- | A change to a value in a key-value store.
 data DiffEntry v =
       Insert !v
     | Delete !v
-  deriving stock (Generic, Show, Eq, Functor, Foldable)
+    | UnsafeAntiInsert !v
+    | UnsafeAntiDelete !v
+  deriving stock (Generic, Show, Eq, Functor)
   deriving anyclass (NoThunks)
 
 {------------------------------------------------------------------------------
@@ -248,8 +252,10 @@ instance Eq v => Group (DiffHistory v) where
 -- identity element, so it is not a @Monoid@ or @Semigroup@.
 invertDiffEntry :: DiffEntry v -> DiffEntry v
 invertDiffEntry = \case
-  Insert x -> Delete x
-  Delete x -> Insert x
+  Insert x           -> UnsafeAntiInsert x
+  Delete x           -> UnsafeAntiDelete x
+  UnsafeAntiInsert x -> Insert x
+  UnsafeAntiDelete x -> Delete x
 
 -- | @'areInverses e1 e2@ checks whether @e1@ and @e2@ are each other's inverse.
 --
@@ -267,24 +273,28 @@ applyDiff ::
      Ord k
   => Map k v
   -> Diff k v
-  -> Map k v
+  -> Either () (Map k v)
 applyDiff m (Diff diffs) =
-    Merge.merge
+    Merge.mergeA
       Merge.preserveMissing
-      (Merge.mapMaybeMissing     newKeys)
-      (Merge.zipWithMaybeMatched oldKeys)
+      (Merge.traverseMaybeMissing newKeys)
+      (Merge.zipWithMaybeAMatched oldKeys)
       m
       diffs
   where
-    newKeys :: k -> NEDiffHistory v -> Maybe v
+    newKeys :: k -> NEDiffHistory v -> Either () (Maybe v)
     newKeys _k h = case last h of
-      Insert x  -> Just x
-      Delete _x -> Nothing
+      Insert x           -> Right $ Just x
+      Delete _           -> Right Nothing
+      UnsafeAntiInsert _ -> Left ()
+      UnsafeAntiDelete _ -> Left ()
 
-    oldKeys :: k -> v -> NEDiffHistory v -> Maybe v
+    oldKeys :: k -> v -> NEDiffHistory v -> Either () (Maybe v)
     oldKeys _k _v1 h = case last h of
-      Insert x  -> Just x
-      Delete _x -> Nothing
+      Insert x           -> Right $ Just x
+      Delete _           -> Right Nothing
+      UnsafeAntiInsert _ -> Left ()
+      UnsafeAntiDelete _ -> Left ()
 
 -- | Applies a diff to a @'Map'@ for a specific set of keys.
 applyDiffForKeys ::
@@ -292,11 +302,31 @@ applyDiffForKeys ::
   => Map k v
   -> Set k
   -> Diff k v
-  -> Map k v
+  -> Either () (Map k v)
 applyDiffForKeys m ks (Diff diffs) =
   applyDiff
     m
     (Diff $ diffs `Map.restrictKeys` (Map.keysSet m `Set.union` ks))
+
+-- | Applies a diff to a @'Map'@, throws an error if applying the diff failed.
+unsafeApplyDiff ::
+     Ord k
+  => Map k v
+  -> Diff k v
+  -> Map k v
+unsafeApplyDiff m d = fromRight (error "applyDiff failed") $
+  applyDiff m d
+
+-- | Applies a diff to a @'Map'@ for a specific set of keys, throws an error if
+-- applying the diff failed.
+unsafeApplyDiffForKeys ::
+     Ord k
+  => Map k v
+  -> Set k
+  -> Diff k v
+  -> Map k v
+unsafeApplyDiffForKeys m s d = fromRight (error "applyDiffForKeys failed") $
+  applyDiffForKeys m s d
 
 {------------------------------------------------------------------------------
   Folds and traversals
