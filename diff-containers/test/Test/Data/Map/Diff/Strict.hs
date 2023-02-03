@@ -18,7 +18,7 @@ import qualified Data.Sequence.NonEmpty as NESeq
 import           Test.Tasty (TestTree, testGroup)
 import           Test.Tasty.QuickCheck
 
-import           Data.Map.Diff.Strict
+import           Data.Map.Diff.Strict.Internal
 
 import           Data.Semigroupoid.Simple.Auto
 import           Data.Semigroupoid.Simple.Laws

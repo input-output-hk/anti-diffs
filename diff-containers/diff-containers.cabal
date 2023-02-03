@@ -20,6 +20,7 @@ library
   hs-source-dirs:     src
 
   exposed-modules:    Data.Map.Diff.Strict
+                      Data.Map.Diff.Strict.Internal
   other-modules:      Data.Sequence.NonEmpty.Extra
 
   build-depends:      base              >=4.9 && <4.17
