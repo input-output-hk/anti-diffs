@@ -52,6 +52,7 @@ test-suite test
   build-depends:      base              >=4.9 && <4.17
                     , containers
                     , diff-containers
+                    , groups
                     , nonempty-containers
                     , QuickCheck
                     , simple-semigroupoids

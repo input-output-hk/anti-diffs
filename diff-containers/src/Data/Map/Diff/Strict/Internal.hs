@@ -9,6 +9,21 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE ViewPatterns               #-}
 
+-- | Differences on @'Map'@s with a @'Group'@ instance.
+--
+-- === Positivity and normality
+--
+-- It is an unfortunate side effect of facilitating a @'Group'@ instance for
+-- @'Diff'@s that we can get into situations where applying diffs will fail or
+-- produce wrong results due to diffs containing internally unresolved sums and
+-- subtractions. The responsibility of downstream code is to ensure that diffs
+-- that are applied are both /positive/ (@'isPositive'@) and /normal/
+-- @('isNormal')@. If that is the case, then applying diffs will never go wrong.
+--
+-- A number of definitions in this modules are annotated with PRECONDITION,
+-- INVARIANT and POSTCONDITION. Use these and the type class laws for
+-- @'Semigroup'@, @'Monoid'@ and @'Group'@ (which hold given preconditions) to
+-- ensure that applied diffs are always both positive and normal.
 module Data.Map.Diff.Strict.Internal (
     -- * Types
     Diff (..)
@@ -42,6 +57,11 @@ module Data.Map.Diff.Strict.Internal (
     -- ** Size
   , null
   , size
+    -- ** Positivity and normality
+  , isNormal
+  , isNormalDiffHistory
+  , isPositive
+  , isPositiveDiffHistory
     -- * @'Group'@ instances
   , areInverses
   , invertDiffEntry
@@ -62,6 +82,7 @@ import           Prelude hiding (last, length, null, splitAt)
 import           Control.Monad (void)
 import           Data.Bifunctor
 import           Data.Either (fromRight)
+import           Data.Foldable hiding (null)
 import           Data.Group
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
@@ -103,7 +124,11 @@ newtype NEDiffHistory v = NEDiffHistory { getNEDiffHistory :: NESeq (DiffEntry v
 data DiffEntry v =
       Insert !v
     | Delete !v
+      -- | Considered unsafe to act on. Consider throwing an error when pattern
+      -- matching on this constructor.
     | UnsafeAntiInsert !v
+      -- | Considered unsafe to act on. Consider throwing an error when pattern
+      -- matching on this constructor.
     | UnsafeAntiDelete !v
   deriving stock (Generic, Show, Eq, Functor)
   deriving anyclass (NoThunks)
@@ -129,6 +154,9 @@ nonEmptyDiffHistory (DiffHistory sq) = NEDiffHistory <$> NESeq.nonEmptySeq sq
 ------------------------------------------------------------------------------}
 
 -- | Compute the difference between @'Map'@s.
+--
+-- POSTCONDITION: diffing computes a @'Diff'@ that is both normal and
+-- positive.
 diff :: (Ord k, Eq v) => Map k v -> Map k v -> Diff k v
 diff m1 m2 = Diff $
     Merge.merge
@@ -199,10 +227,51 @@ null (Diff m) = Map.null m
 size :: Diff k v -> Int
 size (Diff m) = Map.size m
 
+-- | A positive diff contains only @'Insert'@s and @'Delete'@s. A negative diff
+-- can also contain @'UnsafeAntiInsert'@s and @'UnsafeAntiDelete'@s, which makes
+-- applying diffs unsafe.
+isPositive :: Diff k v -> Bool
+isPositive (Diff m) = all (isPositiveDiffHistory . toDiffHistory) m
+
+-- | Check if a diff history is positive, which means it can only contain
+-- @'Insert'@s and @'Delete'@s.
+isPositiveDiffHistory :: DiffHistory v -> Bool
+isPositiveDiffHistory (DiffHistory vs) = all p vs
+  where
+    p (Insert _)           = True
+    p (Delete _)           = True
+    p (UnsafeAntiInsert _) = False
+    p (UnsafeAntiDelete _) = False
+
+-- | A normal diff has resolved all sums and subtractions internally. Applying a
+-- non-normal diff is considered unsafe.
+isNormal :: Eq v => Diff k v -> Bool
+isNormal (Diff d) = all (isNormalDiffHistory . toDiffHistory) d
+
+-- | Check if a diff history is in normal form, where no succesive elements are
+-- inverses of each other.
+--
+-- If two succesive diff entries are inverses, they can be cancelled out. In
+-- other words, we can normalise the diff history further by cancelling out the
+-- diff entries. If so, we can conclude that the input diff history is not in
+-- normal form.
+isNormalDiffHistory :: Eq v => DiffHistory v -> Bool
+isNormalDiffHistory (DiffHistory vs) =
+    snd $ foldl' f (Nothing, True) vs
+  where
+    f (prevMay, b) cur = case prevMay of
+      Nothing   -> (Just cur, b)
+      Just prev -> (Just cur, b && not (areInverses prev cur))
+
 {------------------------------------------------------------------------------
   @'Group'@ instances
 ------------------------------------------------------------------------------}
 
+-- | Summing of diffs.
+--
+-- PRECONDITION: Normality is required for type class laws to hold.
+--
+-- INVARIANT: Summing preserves both positivity and normality.
 instance (Ord k, Eq v) => Semigroup (Diff k v) where
   Diff m1 <> Diff m2 = Diff $
     Merge.merge
@@ -214,9 +283,19 @@ instance (Ord k, Eq v) => Semigroup (Diff k v) where
       m1
       m2
 
+-- | Identity diffs.
+--
+-- PRECONDITION: Normality is required for type class laws to hold.
+--
+-- INVARIANT: @'mempty'@ is both positive and normal.
 instance (Ord k, Eq v) => Monoid (Diff k v) where
   mempty = Diff mempty
 
+-- | Inverting diffs.
+--
+-- PRECONDITION: Normality is required for type class laws to hold.
+--
+-- INVARIANT: @'invert'@ preserves normality.
 instance (Ord k, Eq v) => Group (Diff k v) where
   invert (Diff m) = Diff $
     fmap (unsafeFromDiffHistory . invert . toDiffHistory) m
@@ -224,12 +303,21 @@ instance (Ord k, Eq v) => Group (Diff k v) where
 -- | @h1 <> h2@ sums @h1@ and @h2@ by cancelling out as many consecutive diff
 -- entries as possible, and appending the remainders.
 --
--- Diff entries that are each other's inverse can cancel out: @'Delete'@ cancels
--- out any @'Insert' x@, and vice versa.
+-- PRECONDITION: Normality is required for type class laws to hold.
+--
+-- INVARIANT: Summing preserves both positivity and normality.
+--
+-- Diff entries that are each other's inverse (irrespective of their order) can
+-- cancel out:
+--
+-- * @'UnsafeAntiInsert' x@ cancels out any @'Insert' y@ if @x == y@.
+--
+-- * @'UnsafeAntiDelete' x@ cancels out any @'Delete' y@ if @x == y@.
 --
 -- Note: We do not cancel out consecutive elements in @h1@ and @h2@
 -- individually. It is only at the border between @h1@ and @h2@ that we cancel
--- out elements.
+-- out elements. This means that @'mappend'@ing two diff histories does not by
+-- definition return a normal diff.
 instance Eq v => Semigroup (DiffHistory v) where
   DiffHistory s1 <> DiffHistory s2 = DiffHistory $ s1 `mappend'` s2
     where
@@ -240,16 +328,27 @@ instance Eq v => Semigroup (DiffHistory v) where
         | areInverses x y                    = mappend' xs ys
       mappend' xs ys                         = xs Seq.>< ys
 
+-- | Identity diff histories.
+--
+-- PRECONDITION: Normality is required for type class laws to hold.
+--
+-- INVARIANT: @'mempty'@ is both positive and normal.
 instance Eq v => Monoid (DiffHistory v) where
   mempty = DiffHistory mempty
 
+-- | Inverting diff histories.
+--
+-- PRECONDITION: Normality is required for type class laws to hold.
+--
+-- INVARIANT: @'invert'@ preserves normality.
 instance Eq v => Group (DiffHistory v) where
   invert (DiffHistory s) = DiffHistory $ Seq.reverse . fmap invertDiffEntry $ s
 
 -- | @`invertDiffEntry` e@ inverts a @'DiffEntry' e@ to its counterpart.
 --
--- Note: We invert @DiffEntry@s, but it is not a @Group@: We do not have an
--- identity element, so it is not a @Monoid@ or @Semigroup@.
+-- Note: We invert @'DiffEntry'@s, but a @'DiffEntry'@ is not a @'Group'@: we do
+-- not have an identity element, so @'DiffEntry'@ is not a @'Monoid'@ or
+-- @'Semigroup'@.
 invertDiffEntry :: DiffEntry v -> DiffEntry v
 invertDiffEntry = \case
   Insert x           -> UnsafeAntiInsert x
@@ -257,10 +356,8 @@ invertDiffEntry = \case
   UnsafeAntiInsert x -> Insert x
   UnsafeAntiDelete x -> Delete x
 
--- | @'areInverses e1 e2@ checks whether @e1@ and @e2@ are each other's inverse.
---
--- For simplicity, we simply compare the inverse of the first argument to the
--- second argument. That is, inversion should be invertible.
+-- | @'areInverses' e1 e2@ checks whether @e1@ and @e2@ are each other's
+-- inverse.
 areInverses :: Eq v => DiffEntry v -> DiffEntry v -> Bool
 areInverses e1 e2 = invertDiffEntry e1 == e2
 
@@ -269,6 +366,10 @@ areInverses e1 e2 = invertDiffEntry e1 == e2
 ------------------------------------------------------------------------------}
 
 -- | Applies a diff to a @'Map'@.
+--
+-- PRECONDITION: The diff that is to be applied is both normal and positive.
+--
+-- POSTCONDITION: The result is @'Right' m@ for some @m@.
 applyDiff ::
      Ord k
   => Map k v
@@ -297,6 +398,10 @@ applyDiff m (Diff diffs) =
       UnsafeAntiDelete _ -> Left ()
 
 -- | Applies a diff to a @'Map'@ for a specific set of keys.
+--
+-- PRECONDITION: The diff that is to be applied is both normal and positive.
+--
+-- POSTCONDITION: The result is @'Right' m@ for some @m@.
 applyDiffForKeys ::
      Ord k
   => Map k v
@@ -309,6 +414,10 @@ applyDiffForKeys m ks (Diff diffs) =
     (Diff $ diffs `Map.restrictKeys` (Map.keysSet m `Set.union` ks))
 
 -- | Applies a diff to a @'Map'@, throws an error if applying the diff failed.
+--
+-- PRECONDITION: The diff that is to be applied is both normal and positive.
+--
+-- POSTCONDITION: No error is thrown.
 unsafeApplyDiff ::
      Ord k
   => Map k v
@@ -319,6 +428,10 @@ unsafeApplyDiff m d = fromRight (error "applyDiff failed") $
 
 -- | Applies a diff to a @'Map'@ for a specific set of keys, throws an error if
 -- applying the diff failed.
+--
+-- PRECONDITION: The diff that is to be applied is both normal and positive.
+--
+-- POSTCONDITION: No error is thrown.
 unsafeApplyDiffForKeys ::
      Ord k
   => Map k v
