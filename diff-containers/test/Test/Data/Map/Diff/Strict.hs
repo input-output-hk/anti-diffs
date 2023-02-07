@@ -1,6 +1,5 @@
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TypeApplications           #-}
 
@@ -8,59 +7,112 @@
 
 module Test.Data.Map.Diff.Strict (tests) where
 
-import           Data.Foldable (foldl')
+import           Data.Foldable
 import           Data.Map.Strict (Map)
 import           Data.Maybe
 import           Data.Proxy (Proxy (Proxy))
 import           Data.Sequence.NonEmpty (NESeq (..))
 import qualified Data.Sequence.NonEmpty as NESeq
 
-import           Test.Tasty (TestTree, testGroup)
-import           Test.Tasty.QuickCheck
+import           Test.Tasty (TestTree, localOption, testGroup)
+import           Test.Tasty.QuickCheck hiding (Negative, Positive)
 
-import           Data.Map.Diff.Strict.Internal
+import           Data.Map.Diff.Strict.Internal hiding (null)
 
-import           Data.Semigroupoid.Simple.Auto
 import           Data.Semigroupoid.Simple.Laws
 
+import           Test.Util
+
+-- | Tests for "Data.Map.Diff.Strict".
+--
+-- === The use of @'OftenSmall'@
+--
+-- Throughout these tests, we often use/test the @'Group'@ instances for
+-- @'DiffHistory'@ and @'Diff'@. For @'mappend'@, @'mempty'@ and @'invert'@ to
+-- do interesting things, we should generate values in a small range. Examples:
+--
+-- * An @'Insert' x@ and @'UnsafeAntiInsert' y@ can only cancel out if @x == y@.
+-- If the range that we pick @x@ and @y@ from is large, then the probability
+-- that @x == y@ is small.
+--
+-- * Only if two @'mappend'@ed diffs contain the same key will the corresponding
+-- diff histories be @'mappend'@ed. If we pick keys in diffs from a large range,
+-- then the probability of matching keys is low.
+--
+-- We use the @'OftenSmall'@ wrapper and its @'Arbitrary'@ instance to generate
+-- small values often.
 tests :: TestTree
 tests = testGroup "Data.Map.Diff.Strict" [
-      testGroupWithProxy (Proxy @(DiffEntry (Smaller Int))) [
-      ]
-    , testGroupWithProxy (Proxy @(DiffHistory (Smaller Int))) [
+      localOption (QuickCheckTests 1000) $
+      testGroupWithProxy (Proxy @(DiffHistory (OftenSmall Int))) [
           testSemigroupLaws
         , testMonoidLaws
         , testGroupLaws
         ]
-    , testGroupWithProxy (Proxy @(Auto (DiffHistory (Smaller Int)))) [
-          testSemigroupoidLaws
-        , testGroupoidLaws
-        ]
-    , testGroupWithProxy (Proxy @(Diff (Smaller Int) (Smaller Int))) [
+    , localOption (QuickCheckTests 1000) $
+      testGroupWithProxy (Proxy @(Diff (OftenSmall Int) (OftenSmall Int))) [
           testSemigroupLaws
         , testMonoidLaws
         , testGroupLaws
         ]
-    , testGroupWithProxy (Proxy @(Auto (Diff (Smaller Int) (Smaller Int)))) [
-          testSemigroupoidLaws
-        , testGroupoidLaws
-        ]
-    , testProperty "prop_diffThenApply @(Smaller Int)" $
-        prop_diffThenApply @(Smaller Int) @(Smaller Int)
-    , testProperty "prop_diffThenApply @Int" $
-        prop_diffThenApply @Int @Int
+    , localOption (QuickCheckTests 10000) $
+      testProperty "prop_diffingIsPositive" $
+        prop_diffingIsPositive @(OftenSmall Int) @(OftenSmall Int)
+    , localOption (QuickCheckTests 10000) $
+      testProperty "prop_diffThenApply" $
+        prop_diffThenApply @(OftenSmall Int) @(OftenSmall Int)
+    , localOption (QuickCheckTests 10000) $
+      testProperty "prop_applyMempty" $
+        prop_applyMempty @(OftenSmall Int) @(OftenSmall Int)
+    , localOption (QuickCheckMaxRatio 100) $
+      localOption (QuickCheckTests 1000) $
+      testProperty "prop_applyAllAndApplySum" $
+        prop_applyAllAndApplySum @(OftenSmall Int) @(OftenSmall Int)
+    , localOption (QuickCheckMaxRatio 100) $
+      localOption (QuickCheckTests 1000) $
+      testProperty "prop_unsafeApplyAllAndUnsafeApplySum" $
+        prop_unsafeApplyAllAndUnsafeApplySum @(OftenSmall Int) @(OftenSmall Int)
     ]
 
 {------------------------------------------------------------------------------
   Simple properties
 ------------------------------------------------------------------------------}
 
+prop_diffingIsPositive ::
+     (Ord k, Eq v)
+  => Map k v
+  -> Map k v
+  -> Property
+prop_diffingIsPositive m1 m2 = property $ isPositive (diff m1 m2)
+
 prop_diffThenApply ::
      (Show k, Show v, Ord k, Eq v)
   => Map k v
   -> Map k v
   -> Property
-prop_diffThenApply m1 m2 = applyDiff m1 (diff m1 m2) === m2
+prop_diffThenApply m1 m2 = applyDiff m1 (diff m1 m2) === Right m2
+
+prop_applyMempty ::
+     (Show k, Show v, Ord k, Eq v)
+  => Map k v
+  -> Property
+prop_applyMempty m = applyDiff m mempty === Right m
+
+prop_applyAllAndApplySum ::
+     (Show k, Show v, Ord k, Eq v)
+  => Map k v
+  -> [Diff k v]
+  -> Property
+prop_applyAllAndApplySum m ds =
+  all isPositive ds ==> foldlM applyDiff m ds === applyDiff m (mconcat ds)
+
+prop_unsafeApplyAllAndUnsafeApplySum ::
+     (Show k, Show v, Ord k, Eq v)
+  => Map k v
+  -> [Diff k v]
+  -> Property
+prop_unsafeApplyAllAndUnsafeApplySum m ds =
+  all isPositive ds ==> foldl' unsafeApplyDiff m ds === unsafeApplyDiff m (mconcat ds)
 
 {------------------------------------------------------------------------------
   Preconditions
@@ -81,16 +133,20 @@ isNormal (DiffHistory vs) =
       Nothing   -> (Just cur, b)
       Just prev -> (Just cur, b && not (areInverses prev cur))
 
+isPositive :: Diff k v -> Bool
+isPositive (Diff m) = all (isPositiveDiffHistory . toDiffHistory) m
+
+isPositiveDiffHistory :: DiffHistory v -> Bool
+isPositiveDiffHistory (DiffHistory vs) = all p vs
+  where
+    p (Insert _)           = True
+    p (Delete _)           = True
+    p (UnsafeAntiInsert _) = False
+    p (UnsafeAntiDelete _) = False
+
 {------------------------------------------------------------------------------
   Types
 ------------------------------------------------------------------------------}
-
-newtype Smaller a = Smaller a
-  deriving newtype (Show, Eq, Ord)
-
-instance Integral a => Arbitrary (Smaller a) where
-  arbitrary = Smaller . fromIntegral <$> chooseInt (-5, 5)
-  shrink (Smaller x) = Smaller . fromIntegral <$> shrink @Int (fromIntegral x)
 
 deriving newtype instance (Ord k, Eq v, Arbitrary k, Arbitrary v)
                        => Arbitrary (Diff k v)
@@ -110,7 +166,11 @@ instance Arbitrary v => Arbitrary (DiffEntry v) where
   arbitrary = oneof [
       Insert <$> arbitrary
     , Delete <$> arbitrary
+    , UnsafeAntiInsert <$> arbitrary
+    , UnsafeAntiDelete <$> arbitrary
     ]
-  shrink = \case
+  shrink de = case de of
     Insert x           -> Insert <$> shrink x
     Delete x           -> Delete <$> shrink x
+    UnsafeAntiInsert x -> UnsafeAntiInsert <$> shrink x
+    UnsafeAntiDelete x -> UnsafeAntiDelete <$> shrink x

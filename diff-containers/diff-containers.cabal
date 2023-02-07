@@ -47,11 +47,13 @@ test-suite test
   main-is:            Main.hs
 
   other-modules:      Test.Data.Map.Diff.Strict
+                      Test.Util
 
   build-depends:      base              >=4.9 && <4.17
                     , containers
                     , diff-containers
                     , nonempty-containers
+                    , QuickCheck
                     , simple-semigroupoids
                     , tasty
                     , tasty-quickcheck
