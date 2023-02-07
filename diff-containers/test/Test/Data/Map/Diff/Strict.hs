@@ -23,6 +23,24 @@ import           Data.Semigroupoid.Simple.Laws
 
 import           Test.Util
 
+-- | Tests for "Data.Map.Diff.Strict".
+--
+-- === The use of @'OftenSmall'@
+--
+-- Throughout these tests, we often use/test the @'Group'@ instances for
+-- @'DiffHistory'@ and @'Diff'@. For @'mappend'@, @'mempty'@ and @'invert'@ to
+-- do interesting things, we should generate values in a small range. Examples:
+--
+-- * An @'Insert' x@ and @'UnsafeAntiInsert' y@ can only cancel out if @x == y@.
+-- If the range that we pick @x@ and @y@ from is large, then the probability
+-- that @x == y@ is small.
+--
+-- * Only if two @'mappend'@ed diffs contain the same key will the corresponding
+-- diff histories be @'mappend'@ed. If we pick keys in diffs from a large range,
+-- then the probability of matching keys is low.
+--
+-- We use the @'OftenSmall'@ wrapper and its @'Arbitrary'@ instance to generate
+-- small values often.
 tests :: TestTree
 tests = testGroup "Data.Map.Diff.Strict" [
       localOption (QuickCheckTests 1000) $
