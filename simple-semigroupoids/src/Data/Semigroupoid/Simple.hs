@@ -23,7 +23,7 @@ infix 6 <>?
 --
 -- The following laws are from
 -- <https://en.wikipedia.org/wiki/Groupoid#Algebraic>, with @*@ representing
--- 'poperatorM'.
+-- 'pappendM'.
 --
 -- /Associativity/ If @Just x ∗ Just y@ and @Just y ∗ Just z@ are defined, then
 -- @(Just x ∗ Just y) ∗ Just z@ and @Just x ∗ (Just y ∗ Just z)@ are defined and
@@ -53,7 +53,7 @@ pappendUnsafe l r = case l <>? r of
 --
 -- The following laws are from
 -- <https://en.wikipedia.org/wiki/Groupoid#Algebraic>, with @*@ representing
--- 'poperatorM'.
+-- 'pappendM'.
 --
 -- /Inverse/ @Just ('pinv' x) ∗ Just x@ and @Just x ∗ Just ('pinv' x)@ are
 -- always defined.
