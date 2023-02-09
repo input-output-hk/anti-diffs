@@ -21,6 +21,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
+    - name: Workaround runner image issue
+      if: runner.os == 'Linux'
+      # https://github.com/actions/runner-images/issues/7061
+      run: sudo chown -R $USER /usr/local/.ghcup
+
     - name: Checkout repository
       uses: actions/checkout@v3
 
@@ -73,6 +78,10 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
+    - name: Workaround runner image issue
+      # https://github.com/actions/runner-images/issues/7061
+      run: sudo chown -R $USER /usr/local/.ghcup
+
     - name: Checkout repository
       uses: actions/checkout@v3
 
