@@ -7,7 +7,7 @@ there is only one such implemented difference datatype for `Data.Map.Strict`.
 
 A difference datatype for maps is defined and implemented in the
 `Data.Map.Diff.Strict` module. A key property of our definition of diffs is that
-diffs can not only combined/summed, they can also be inverted and summed
+diffs can not only be combined/summed, they can also be inverted and summed
 together, which facilitates *subtraction* of diffs. Our definition of diffs is
 not only a `Semigroup` and a `Monoid`, it is also a `Group`.
 
