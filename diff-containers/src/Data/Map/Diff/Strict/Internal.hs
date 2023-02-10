@@ -215,11 +215,15 @@ size (Diff m) = Map.size m
 -- | A positive diff contains only @'Insert'@s and @'Delete'@s. A negative diff
 -- can also contain @'UnsafeAntiInsert'@s and @'UnsafeAntiDelete'@s, which makes
 -- applying diffs unsafe.
+--
+-- Note: a positive diff is by definition also a normal diff.
 isPositive :: Diff k v -> Bool
 isPositive (Diff m) = all (isPositiveDiffHistory . toDiffHistory) m
 
 -- | Check if a diff history is positive, which means it can only contain
 -- @'Insert'@s and @'Delete'@s.
+--
+-- Note: a positive diff history is by definition also a normal diff history.
 isPositiveDiffHistory :: DiffHistory v -> Bool
 isPositiveDiffHistory (DiffHistory vs) = all p vs
   where

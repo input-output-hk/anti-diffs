@@ -58,13 +58,20 @@ tests = testGroup "Data.Map.Diff.Strict" [
         , testMonoidLaws
         , testGroupLaws
         ]
-    , testGroup "diffing" [
+    , testGroup "Diffing" [
           localOption (QuickCheckTests 10000) $
           testProperty "prop_diffingIsPositive" $
             prop_diffingIsPositive @(OftenSmall Int) @(OftenSmall Int)
         , localOption (QuickCheckTests 10000) $
           testProperty "prop_diffingIsNormal" $
             prop_diffingIsNormal @(OftenSmall Int) @(OftenSmall Int)
+        ]
+    , localOption (QuickCheckTests 10000) $
+      testGroup "Positive implies normal" [
+          testProperty "prop_positiveDiffImpliesNormalDiff" $
+            prop_positiveDiffImpliesNormalDiff @(OftenSmall Int) @(OftenSmall Int)
+        , testProperty "prop_positiveDiffHistoryImpliesNormalDiffHistory" $
+            prop_positiveDiffHistoryImpliesNormalDiffHistory @(OftenSmall Int)
         ]
     , testGroup "Preserving positivity and normality" [
           localOption (QuickCheckTests 1000) $
@@ -109,6 +116,54 @@ tests = testGroup "Data.Map.Diff.Strict" [
           testProperty "prop_normalAndPositiveDiffsNeverFailUnsafeApply" $
             prop_normalAndPositiveDiffsNeverFailUnsafeApply @(OftenSmall Int) @(OftenSmall Int)
         ]
+    , testGroup "Generators" [
+          testGroup "All diffs and diff histories" [
+              testProperty "arbitrary/shrunk Diff is not always positive" $ expectFailure $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(Diff (OftenSmall Int) (OftenSmall Int))
+                  isPositive
+            , testProperty "arbitrary/shrunk DiffHistory is not always positive" $ expectFailure $
+                prop_arbitrarySatisfiesProperty
+                  @(DiffHistory (OftenSmall Int))
+                  isPositiveDiffHistory
+            , testProperty "arbitrary/shrunk Diff is not always normal" $ expectFailure $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(Diff (OftenSmall Int) (OftenSmall Int))
+                  isNormal
+            , testProperty "arbitrary/shrunk DiffHistory is not always normal" $ expectFailure $
+                prop_arbitrarySatisfiesProperty
+                  @(DiffHistory (OftenSmall Int))
+                  isNormalDiffHistory
+            ]
+        , testGroup "Normal diffs and diff histories" [
+              testProperty "arbitrary/shrunk NormalDiff is always in normal form" $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(NormalDiff (OftenSmall Int) (OftenSmall Int))
+                  (isNormal . getNormalDiff)
+            , testProperty "arbitrary/shrunk NormalDiff is always in normal form" $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(NormalDiffHistory (OftenSmall Int))
+                  (isNormalDiffHistory . getNormalDiffHistory)
+            ]
+        , testGroup "Positive diffs and diff histories" [
+              testProperty "arbitrary/shrunk PositiveDiff is always positive" $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(PositiveDiff (OftenSmall Int) (OftenSmall Int))
+                  (isPositive . getPositiveDiff)
+            , testProperty "arbitrary/shrunk PositiveDiffHistory is always positive" $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(PositiveDiffHistory (OftenSmall Int))
+                  (isPositiveDiffHistory . getPositiveDiffHistory)
+            , testProperty "arbitrary/shrunk PositiveDiff is always normal" $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(PositiveDiff (OftenSmall Int) (OftenSmall Int))
+                  (isNormal . getPositiveDiff)
+            , testProperty "arbitrary/shrunk PositiveDiffHistory is always normal" $
+                prop_arbitraryAndShrinkSatisfyProperty
+                  @(PositiveDiffHistory (OftenSmall Int))
+                  (isNormalDiffHistory . getPositiveDiffHistory)
+            ]
+        ]
     ]
 
 {------------------------------------------------------------------------------
@@ -131,6 +186,30 @@ prop_diffingIsNormal ::
   -> Property
 prop_diffingIsNormal m1 m2 = property $ isNormal (diff m1 m2)
 
+--
+-- Positive implies normal
+--
+
+-- | A positive diff is implied to be normal.
+prop_positiveDiffImpliesNormalDiff ::
+     Eq v
+  => PositiveDiff k v
+  -> Property
+prop_positiveDiffImpliesNormalDiff (PositiveDiff d) =
+  property $ isNormal d
+
+-- | A positive diff history is implied to be normal.
+prop_positiveDiffHistoryImpliesNormalDiffHistory ::
+     Eq v
+  => PositiveDiffHistory v
+  -> Property
+prop_positiveDiffHistoryImpliesNormalDiffHistory (PositiveDiffHistory h) =
+  property $ isNormalDiffHistory h
+
+--
+-- Preserving positivity and normality
+--
+
 -- | Test the invariant that summing @'Diff'@s preserves positivity.
 prop_summingDiffsPreservesPositivity ::
      (Ord k, Eq v)
@@ -138,7 +217,7 @@ prop_summingDiffsPreservesPositivity ::
   -> PositiveDiff k v
   -> Property
 prop_summingDiffsPreservesPositivity (PositiveDiff d1) (PositiveDiff d2) =
-  isPositive d1 && isPositive d2 ==> isPositive (d1 <> d2)
+  property $ isPositive (d1 <> d2)
 
 -- | Test the invariant that summing @'DiffHistory'@s preserves positivity.
 prop_summingDiffHistoriesPreservesPositivity ::
@@ -147,7 +226,7 @@ prop_summingDiffHistoriesPreservesPositivity ::
   -> PositiveDiffHistory v
   -> Property
 prop_summingDiffHistoriesPreservesPositivity (PositiveDiffHistory h1) (PositiveDiffHistory h2) =
-  isPositiveDiffHistory h1 && isPositiveDiffHistory h2 ==> isPositiveDiffHistory (h1 <> h2)
+  property $ isPositiveDiffHistory (h1 <> h2)
 
 -- | Test the invariant that summing @'Diff'@s preserves normality.
 prop_summingDiffsPreservesNormality ::
@@ -156,7 +235,7 @@ prop_summingDiffsPreservesNormality ::
   -> NormalDiff k v
   -> Property
 prop_summingDiffsPreservesNormality (NormalDiff d1) (NormalDiff d2) =
-  isNormal d1 && isNormal d2 ==> isNormal (d1 <> d2)
+  property $ isNormal (d1 <> d2)
 
 -- | Test the invariant that summing @'DiffHistory'@s preserves normality.
 prop_summingDiffHistoriesPreservesNormality ::
@@ -165,7 +244,7 @@ prop_summingDiffHistoriesPreservesNormality ::
   -> NormalDiffHistory v
   -> Property
 prop_summingDiffHistoriesPreservesNormality (NormalDiffHistory h1) (NormalDiffHistory h2) =
-  isNormalDiffHistory h1 && isNormalDiffHistory h2 ==> isNormalDiffHistory (h1 <> h2)
+  property $ isNormalDiffHistory (h1 <> h2)
 
 -- | Test the invariant that inverting @'Diff'@s preserves normality.
 prop_invertingDiffsPreservesNormality ::
@@ -173,7 +252,7 @@ prop_invertingDiffsPreservesNormality ::
   => NormalDiff k v
   -> Property
 prop_invertingDiffsPreservesNormality (NormalDiff d) =
-  isNormal d ==> isNormal (invert d)
+  property $ isNormal (invert d)
 
 -- | Test the invariant that inverting @'DiffHistory'@s preserves normality.
 prop_invertingDiffHistoriesPreservesNormality ::
@@ -181,7 +260,11 @@ prop_invertingDiffHistoriesPreservesNormality ::
   => NormalDiffHistory v
   -> Property
 prop_invertingDiffHistoriesPreservesNormality (NormalDiffHistory h) =
-  isNormalDiffHistory h ==> isNormalDiffHistory (invert h)
+  property $ isNormalDiffHistory (invert h)
+
+--
+-- Positivity and normality for identity elements
+--
 
 -- | Test the invariant that the identity @'Diff'@ element is positive.
 prop_emptyDiffIsPositive :: Property
@@ -198,6 +281,10 @@ prop_emptyDiffIsNormal = once $ isNormal (mempty :: Diff Int Int)
 -- | Test the invariant that the identity @'DiffHistory'@ element is normal.
 prop_emptyDiffHistoryIsNormal:: Property
 prop_emptyDiffHistoryIsNormal = once $ isNormalDiffHistory (mempty :: DiffHistory Int)
+
+--
+-- Applying diffs
+--
 
 -- | Applying a @'Diff'@ computed from a source and target @'Map'@ should
 -- produce the target @'Map'@.
@@ -220,33 +307,62 @@ prop_applyMempty m = applyDiff m mempty === Right m
 prop_applyAllAndApplySum ::
      (Show k, Show v, Ord k, Eq v)
   => Map k v
-  -> [NPDiff k v]
+  -> [PositiveDiff k v]
   -> Property
-prop_applyAllAndApplySum m (fmap getNPDiff -> ds) =
-  all isPositive ds && all isNormal ds ==> foldlM applyDiff m ds === applyDiff m (mconcat ds)
+prop_applyAllAndApplySum m (fmap getPositiveDiff -> ds) =
+  foldlM applyDiff m ds === applyDiff m (mconcat ds)
 
 -- | Applying a diff that is both positive and normal will never fail.
 prop_normalAndPositiveDiffsNeverFailApply ::
-     (Ord k, Eq v)
+     Ord k
   => Map k v
-  -> NPDiff k v
+  -> PositiveDiff k v
   -> Property
-prop_normalAndPositiveDiffsNeverFailApply m (NPDiff d) =
-  isPositive d && isNormal d ==> isRight (applyDiff m d)
-
+prop_normalAndPositiveDiffsNeverFailApply m (PositiveDiff d) =
+  property $ isRight (applyDiff m d)
 
 -- | Unsafely applying a diff that is both positive and normal will never throw
 -- an error.
 prop_normalAndPositiveDiffsNeverFailUnsafeApply ::
-     (Ord k, Eq v)
+     Ord k
   => Map k v
-  -> NPDiff k v
+  -> PositiveDiff k v
   -> Property
-prop_normalAndPositiveDiffsNeverFailUnsafeApply m (NPDiff d) =
-  isPositive d && isNormal d ==> unsafeApplyDiff m d `seq` ()
+prop_normalAndPositiveDiffsNeverFailUnsafeApply m (PositiveDiff d) =
+  property $ unsafeApplyDiff m d `seq` ()
+
+--
+-- Generators
+--
+
+-- | Check whether values generated by an @'Arbitrary'@ instance satisfy a
+-- property.
+prop_arbitrarySatisfiesProperty ::
+     (Show a, Arbitrary a)
+  => (a -> Bool)
+  -> Property
+prop_arbitrarySatisfiesProperty p = forAll arbitrary (property . p)
+
+-- | Check whether values shrunk by an @'Arbitrary'@ instance
+-- satisfy a property.
+prop_shrinkSatisfiesProperty ::
+     (Show a, Arbitrary a)
+  => (a -> Bool)
+  -> Property
+prop_shrinkSatisfiesProperty p = forAll arbitrary (property . all p . shrink)
+
+
+-- | Check whether values generated and shrunk by an @'Arbitrary'@ instance
+-- satisfy a property.
+prop_arbitraryAndShrinkSatisfyProperty ::
+     (Show a, Arbitrary a)
+  => (a -> Bool)
+  -> Property
+prop_arbitraryAndShrinkSatisfyProperty p =
+  prop_arbitrarySatisfiesProperty p .&&. prop_shrinkSatisfiesProperty p
 
 {------------------------------------------------------------------------------
-  Types
+  Plain @'Arbitrary'@ instances
 ------------------------------------------------------------------------------}
 
 deriving newtype instance (Ord k, Arbitrary k, Arbitrary v)
@@ -285,8 +401,10 @@ newtype PositiveDiff k v = PositiveDiff { getPositiveDiff :: Diff k v }
 
 instance (Ord k, Arbitrary k, Arbitrary v)
       => Arbitrary (PositiveDiff k v) where
-  arbitrary               = PositiveDiff <$> arbitrary `suchThat` isPositive
-  shrink (PositiveDiff d) = [PositiveDiff d' | d' <- shrink d, isPositive d']
+  arbitrary =
+    PositiveDiff <$> arbitrary `suchThat` isPositive
+  shrink (PositiveDiff d) =
+    [PositiveDiff d' | d' <- shrink d, isPositive d']
 
 -- | A @'DiffHistory'@ for which @'isPositiveDiffHistory'@ holds.
 newtype PositiveDiffHistory v = PositiveDiffHistory {
@@ -296,8 +414,10 @@ newtype PositiveDiffHistory v = PositiveDiffHistory {
   deriving newtype (Semigroup, Monoid, Group)
 
 instance Arbitrary v => Arbitrary (PositiveDiffHistory v) where
-  arbitrary = PositiveDiffHistory <$> arbitrary `suchThat` isPositiveDiffHistory
-  shrink (PositiveDiffHistory h) = [PositiveDiffHistory h' | h' <- shrink h, isPositiveDiffHistory h']
+  arbitrary =
+    PositiveDiffHistory <$> arbitrary `suchThat` isPositiveDiffHistory
+  shrink (PositiveDiffHistory h) =
+    [PositiveDiffHistory h' | h' <- shrink h, isPositiveDiffHistory h']
 
 {------------------------------------------------------------------------------
   Modifiers: normality
@@ -310,8 +430,10 @@ newtype NormalDiff k v = NormalDiff { getNormalDiff :: Diff k v }
 
 instance (Ord k, Eq v, Arbitrary k, Arbitrary v)
       => Arbitrary (NormalDiff k v) where
-  arbitrary             = NormalDiff <$> arbitrary `suchThat` isNormal
-  shrink (NormalDiff d) = [NormalDiff d' | d' <- shrink d, isNormal d']
+  arbitrary =
+    NormalDiff <$> arbitrary `suchThat` isNormal
+  shrink (NormalDiff d) =
+    [NormalDiff d' | d' <- shrink d, isNormal d']
 
 -- | A @'DiffHistory'@ for which @'isNormalDiffHistory'@ holds.
 newtype NormalDiffHistory v = NormalDiffHistory {
@@ -321,30 +443,7 @@ newtype NormalDiffHistory v = NormalDiffHistory {
   deriving newtype (Semigroup, Monoid, Group)
 
 instance (Arbitrary v, Eq v) => Arbitrary (NormalDiffHistory v) where
-  arbitrary = NormalDiffHistory <$> arbitrary `suchThat` isNormalDiffHistory
-  shrink (NormalDiffHistory h) = [NormalDiffHistory h' | h' <- shrink h, isNormalDiffHistory h']
-
-{------------------------------------------------------------------------------
-  Modifiers: positivity and normality
-------------------------------------------------------------------------------}
-
--- | A @'Diff'@ for which @'isNormal'@ and @'isPositive'@ hold.
-newtype NPDiff k v = NPDiff { getNPDiff :: Diff k v }
-  deriving stock (Show, Eq)
-  deriving newtype (Semigroup, Monoid, Group)
-
-instance (Ord k, Eq v, Arbitrary k, Arbitrary v)
-      => Arbitrary (NPDiff k v) where
-  arbitrary         = NPDiff <$> arbitrary `suchThat` (\d -> isNormal d && isPositive d)
-  shrink (NPDiff d) = [NPDiff d' | d' <- shrink d, isNormal d', isPositive d']
-
--- | A @'DiffHistory'@ for which @'isNormalDiffHistory'@ and @'isPositiveDiffHistory'@ hold.
-newtype NPDiffHistory v = NPDiffHistory {
-    getNPDiffHistory :: DiffHistory v
-  }
-  deriving stock (Show, Eq)
-  deriving newtype (Semigroup, Monoid, Group)
-
-instance (Arbitrary v, Eq v) => Arbitrary (NPDiffHistory v) where
-  arbitrary = NPDiffHistory <$> arbitrary `suchThat` (\d -> isNormalDiffHistory d && isPositiveDiffHistory d)
-  shrink (NPDiffHistory h) = [NPDiffHistory h' | h' <- shrink h, isNormalDiffHistory h', isPositiveDiffHistory h']
+  arbitrary =
+    NormalDiffHistory <$> arbitrary `suchThat` isNormalDiffHistory
+  shrink (NormalDiffHistory h) =
+    [NormalDiffHistory h' | h' <- shrink h, isNormalDiffHistory h']

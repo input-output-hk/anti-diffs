@@ -16,6 +16,9 @@
 --   all sums and subtrations internally. This is the case if there are no
 --   consecutive diff entries in a diff history that can still be cancelled out.
 --
+-- Note: a positive diff is by definition also a normal diff. Normality is a
+-- weaker property than positivity.
+--
 -- A number of definitions in this modules are annotated with PRECONDITION,
 -- INVARIANT and POSTCONDITION. Use these and the type class laws for
 -- @'Semigroup'@, @'Monoid'@ and @'Group'@ (which hold given preconditions) to
