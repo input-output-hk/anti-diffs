@@ -11,6 +11,11 @@
 -- that are applied are both /positive/ (@'isPositive'@) and /normal/
 -- @('isNormal')@. If that is the case, then applying diffs will never go wrong.
 --
+-- * Positivity: a positive diff contains only Inserts and Deletes.
+-- * Normality: a normal diff (i.e., a diff that is in normal form) has resolved
+--   all sums and subtrations internally. This is the case if there are no
+--   consecutive diff entries in a diff history that can still be cancelled out.
+--
 -- A number of definitions in this modules are annotated with PRECONDITION,
 -- INVARIANT and POSTCONDITION. Use these and the type class laws for
 -- @'Semigroup'@, @'Monoid'@ and @'Group'@ (which hold given preconditions) to

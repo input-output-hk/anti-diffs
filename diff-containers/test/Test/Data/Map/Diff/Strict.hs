@@ -286,7 +286,7 @@ newtype PositiveDiff k v = PositiveDiff { getPositiveDiff :: Diff k v }
 instance (Ord k, Arbitrary k, Arbitrary v)
       => Arbitrary (PositiveDiff k v) where
   arbitrary               = PositiveDiff <$> arbitrary `suchThat` isPositive
-  shrink (PositiveDiff d) = PositiveDiff <$> shrink d
+  shrink (PositiveDiff d) = [PositiveDiff d' | d' <- shrink d, isPositive d']
 
 -- | A @'DiffHistory'@ for which @'isPositiveDiffHistory'@ holds.
 newtype PositiveDiffHistory v = PositiveDiffHistory {
@@ -297,7 +297,7 @@ newtype PositiveDiffHistory v = PositiveDiffHistory {
 
 instance Arbitrary v => Arbitrary (PositiveDiffHistory v) where
   arbitrary = PositiveDiffHistory <$> arbitrary `suchThat` isPositiveDiffHistory
-  shrink (PositiveDiffHistory h) = PositiveDiffHistory <$> shrink h
+  shrink (PositiveDiffHistory h) = [PositiveDiffHistory h' | h' <- shrink h, isPositiveDiffHistory h']
 
 {------------------------------------------------------------------------------
   Modifiers: normality
@@ -311,7 +311,7 @@ newtype NormalDiff k v = NormalDiff { getNormalDiff :: Diff k v }
 instance (Ord k, Eq v, Arbitrary k, Arbitrary v)
       => Arbitrary (NormalDiff k v) where
   arbitrary             = NormalDiff <$> arbitrary `suchThat` isNormal
-  shrink (NormalDiff d) = NormalDiff <$> shrink d
+  shrink (NormalDiff d) = [NormalDiff d' | d' <- shrink d, isNormal d']
 
 -- | A @'DiffHistory'@ for which @'isNormalDiffHistory'@ holds.
 newtype NormalDiffHistory v = NormalDiffHistory {
@@ -322,7 +322,7 @@ newtype NormalDiffHistory v = NormalDiffHistory {
 
 instance (Arbitrary v, Eq v) => Arbitrary (NormalDiffHistory v) where
   arbitrary = NormalDiffHistory <$> arbitrary `suchThat` isNormalDiffHistory
-  shrink (NormalDiffHistory h) = NormalDiffHistory <$> shrink h
+  shrink (NormalDiffHistory h) = [NormalDiffHistory h' | h' <- shrink h, isNormalDiffHistory h']
 
 {------------------------------------------------------------------------------
   Modifiers: positivity and normality
@@ -335,8 +335,8 @@ newtype NPDiff k v = NPDiff { getNPDiff :: Diff k v }
 
 instance (Ord k, Eq v, Arbitrary k, Arbitrary v)
       => Arbitrary (NPDiff k v) where
-  arbitrary             = NPDiff <$> arbitrary `suchThat` (\d -> isNormal d && isPositive d)
-  shrink (NPDiff d) = NPDiff <$> shrink d
+  arbitrary         = NPDiff <$> arbitrary `suchThat` (\d -> isNormal d && isPositive d)
+  shrink (NPDiff d) = [NPDiff d' | d' <- shrink d, isNormal d', isPositive d']
 
 -- | A @'DiffHistory'@ for which @'isNormalDiffHistory'@ and @'isPositiveDiffHistory'@ hold.
 newtype NPDiffHistory v = NPDiffHistory {
@@ -347,4 +347,4 @@ newtype NPDiffHistory v = NPDiffHistory {
 
 instance (Arbitrary v, Eq v) => Arbitrary (NPDiffHistory v) where
   arbitrary = NPDiffHistory <$> arbitrary `suchThat` (\d -> isNormalDiffHistory d && isPositiveDiffHistory d)
-  shrink (NPDiffHistory h) = NPDiffHistory <$> shrink h
+  shrink (NPDiffHistory h) = [NPDiffHistory h' | h' <- shrink h, isNormalDiffHistory h', isPositiveDiffHistory h']

@@ -9,21 +9,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE ViewPatterns               #-}
 
--- | Differences on @'Map'@s with a @'Group'@ instance.
---
--- === Positivity and normality
---
--- It is an unfortunate side effect of facilitating a @'Group'@ instance for
--- @'Diff'@s that we can get into situations where applying diffs will fail or
--- produce wrong results due to diffs containing internally unresolved sums and
--- subtractions. The responsibility of downstream code is to ensure that diffs
--- that are applied are both /positive/ (@'isPositive'@) and /normal/
--- @('isNormal')@. If that is the case, then applying diffs will never go wrong.
---
--- A number of definitions in this modules are annotated with PRECONDITION,
--- INVARIANT and POSTCONDITION. Use these and the type class laws for
--- @'Semigroup'@, @'Monoid'@ and @'Group'@ (which hold given preconditions) to
--- ensure that applied diffs are always both positive and normal.
+-- | See the module documentation for "Data.Map.Diff.Strict".
 module Data.Map.Diff.Strict.Internal (
     -- * Types
     Diff (..)
@@ -82,7 +68,6 @@ import           Prelude hiding (last, length, null, splitAt)
 import           Control.Monad (void)
 import           Data.Bifunctor
 import           Data.Either (fromRight)
-import           Data.Foldable hiding (null)
 import           Data.Group
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
@@ -243,8 +228,8 @@ isPositiveDiffHistory (DiffHistory vs) = all p vs
     p (UnsafeAntiInsert _) = False
     p (UnsafeAntiDelete _) = False
 
--- | A normal diff has resolved all sums and subtractions internally. Applying a
--- non-normal diff is considered unsafe.
+-- | A diff that is in normal form has resolved all sums and subtractions
+-- internally. Applying a non-normal diff is considered unsafe.
 isNormal :: Eq v => Diff k v -> Bool
 isNormal (Diff d) = all (isNormalDiffHistory . toDiffHistory) d
 
@@ -256,12 +241,9 @@ isNormal (Diff d) = all (isNormalDiffHistory . toDiffHistory) d
 -- diff entries. If so, we can conclude that the input diff history is not in
 -- normal form.
 isNormalDiffHistory :: Eq v => DiffHistory v -> Bool
-isNormalDiffHistory (DiffHistory vs) =
-    snd $ foldl' f (Nothing, True) vs
-  where
-    f (prevMay, b) cur = case prevMay of
-      Nothing   -> (Just cur, b)
-      Just prev -> (Just cur, b && not (areInverses prev cur))
+isNormalDiffHistory (DiffHistory vs) = case vs of
+  Empty     -> True
+  _ :<| des -> not $ any (uncurry areInverses) (Seq.zip vs des)
 
 {------------------------------------------------------------------------------
   @'Group'@ instances
