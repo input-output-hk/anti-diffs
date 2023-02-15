@@ -9,12 +9,17 @@ A difference datatype for maps is defined and implemented in the
 `Data.Map.Diff.Strict` module. A key property of our definition of diffs is that
 diffs can not only be combined/summed, they can also be inverted and summed
 together, which facilitates *subtraction* of diffs. Our definition of diffs is
-not only a `Semigroup` and a `Monoid`, it is also a `Group`.
+not only a [`Semigroup`](https://en.wikipedia.org/wiki/Semigroup#Definition) and
+a [`Monoid`](https://en.wikipedia.org/wiki/Monoid#Definition), it is also a
+[`Group`](https://en.wikipedia.org/wiki/Group_(mathematics)#Definition).
 
 The goals for our definition of diffs are twofold:
 1. Provide definitions that adhere to the type class laws for `Semigroup`,
    `Monoid` and `Group`.
-2. Applying diffs to maps should have a nice semantics.
+2. Applying diffs to maps should have a sound semantics: if we apply a positive
+   diff (see Section [4) Applying diffs with inverses: positivity and
+   normality](#4-applying-diffs-with-inverses-positivity-and-normality)), then
+   the resulting map is correct.
 
 An overview of the sections in this document:
 
@@ -80,24 +85,35 @@ Diffs can then be summed (or combined/`mappend`ed) through a
 `Semigroup`/`Monoid` instance that behaves like a pair-wise `Last` monoid.
 
 ```haskell
-   fromList [(1, Insert_ 54), (2, DDelete 42)                ]
-<> fromList [                 (2, Insert_ 17), (3, DDelete 1)]
-== fromList [(1, Insert_ 54), (2, Insert_ 17), (3, DDelete 1)]
+   fromList [(1, Insert_ 54), (2, Delete_ 42)                ]
+<> fromList [                 (2, Insert_ 17), (3, Delete_ 1)]
+== fromList [(1, Insert_ 54), (2, Insert_ 17), (3, Delete_ 1)]
 ```
 
 What if we want to remove diffs, i.e. through subtraction provided by a `Group`
 instance? In the current definition, there is no way to recover information
 about previous changes, since we only have the last/most recent change. In
-particular, we would like to be able to have the following:
+particular, we would like to be able to have the following, where `(~~)` is a
+subtraction operator provided by `Data.Group`.
 
 ```haskell
-   fromList [(1, Insert_ 54), (2, DDelete 42)                ]
-<> fromList [                 (2, Insert_ 17), (3, DDelete 1)]
-~~ fromList [                 (2, Insert_ 17), (3, DDelete 1)]
-== fromList [(1, Insert_ 54), (2, DDelete 42)                ]
+  (fromList [(1, Insert_ 54), (2, Delete_ 42)                ]
+<> fromList [                 (2, Insert_ 17), (3, Delete_ 1)])
+~~ fromList [                 (2, Insert_ 17), (3, Delete_ 1)]
+== fromList [(1, Insert_ 54), (2, Insert_ 17), (3, Delete_ 1)]
+~~ fromList [                 (2, Insert_ 17), (3, Delete_ 1)]
+== fromList [(1, Insert_ 54), (2, Delete_ 42)                ]
 ```
 
-The current definition of diffs is not sufficient, however.
+If we only consider the diff with respect to key `2`, how could we achieve
+`Insert_ 17 ~~ Insert_ 17 == Delete_ 42` if we have no idea that `Delete_ 42`
+was the last delta before we summed with `Insert_ 17`? We throw away this
+information, so there's no way to define subtraction correctly.
+
+Please note that the parenthesisation should not matter for a correct
+implementation of subtraction: `(~~)` is an alias for `\x y -> x <> invert y`,
+where `invert` is provided by `Data.Group` as well, and `(<>)` *should be*
+associative.
 
 ### 3) Diffs with inverses
 
@@ -155,6 +171,11 @@ data DiffEntry v =
   | UnsafeAntiDelete !v -- ^ Unsafe!
 ```
 
+The inverse constructors are deemed unsafe in the sense that they should not be
+explicitly constructed or matched on without dire consequences, because it will
+easily violate the positivity and normality properties that are discussed in
+[section 4](#4-applying-diffs-with-inverses-positivity-and-normality).
+
 Inverse diff entries will *cancel out* when we sum diff histories. For example:
 
 ```haskell
@@ -200,10 +221,10 @@ never go wrong.
   i.e., there are no consecutive diff entries in a diff history that can still
   be cancelled out.
 
-Import to note: a positive diff is by definition also a normal diff. Normality
-is a weaker property than positivity. However, normality is a sufficient
-precondition for some definitions to work as expected (see the next paragraph),
-in which cases positivity would be an unnecessarily strong requirement.
+Please note: a positive diff is by definition also a normal diff. Normality is a
+weaker property than positivity. However, normality is a sufficient precondition
+for some definitions to work as expected (see the next paragraph), in which
+cases positivity would be an unnecessarily strong requirement.
 
 Normality is also a precondition for the type class laws to hold. This is an
 optimisation: we could normalise diff histories exhaustively in each sum or
@@ -233,6 +254,6 @@ diffs are always both positive and normal. This should not be too complex
   invert (d1 <> ... <> di) <> (d1 <> ... <> di <> dj <> ... <> dn) == dj <> ... <> dn
   ```
 
-It is important not to forget that these sum operations are not commutative.
+It is important to remember that these sum operations are not commutative.
 Summing/subtracting on the left is not the same as summing/subtracting on the
 right.
