@@ -35,7 +35,6 @@ library
                       -Wredundant-constraints
                       -Wmissing-export-lists
                       -Wno-unticked-promoted-constructors
-                      -fno-ignore-asserts
 
 test-suite test
   type:               exitcode-stdio-1.0
