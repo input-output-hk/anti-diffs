@@ -12,7 +12,7 @@ author:              Joris Dral
 maintainer:          operations@iohk.io
 category:            Data Structures
 build-type:          Simple
-tested-with:         GHC == { 8.10.7, 9.2.5 }
+tested-with:         GHC == { 8.10.7, 9.2.5, 9.4.4 }
 
 
 library
@@ -21,7 +21,7 @@ library
 
   exposed-modules:    Data.FingerTree.RootMeasured.Strict
 
-  build-depends:      base              >=4.9 && <4.17
+  build-depends:      base              >=4.9 && <4.18
                     , cardano-strict-containers
                     , groups
                     , nothunks
@@ -44,7 +44,7 @@ test-suite test
 
   other-modules:      Test.Data.FingerTree.RootMeasured.Strict
 
-  build-depends:      base              >=4.9 && <4.17
+  build-depends:      base              >=4.9 && <4.18
                     , fingertree-rm
                     , simple-semigroupoids
                     , tasty
@@ -69,7 +69,7 @@ benchmark bench
 
   other-modules:      Bench.Data.FingerTree.RootMeasured.Strict
 
-  build-depends:      base              >=4.9 && <4.17
+  build-depends:      base              >=4.9 && <4.18
                     , cardano-strict-containers
                     , deepseq
                     , fingertree

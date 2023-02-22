@@ -12,7 +12,7 @@ author:              Joris Dral
 maintainer:          operations@iohk.io
 category:            Control, Testing
 build-type:          Simple
-tested-with:         GHC == { 8.10.7, 9.2.5 }
+tested-with:         GHC == { 8.10.7, 9.2.5, 9.4.4 }
 
 library
   default-language:    Haskell2010
@@ -22,7 +22,7 @@ library
                        Data.Semigroupoid.Simple.Auto
                        Data.Semigroupoid.Simple.Laws
 
-  build-depends:       base              >=4.9 && <4.17
+  build-depends:       base              >=4.9 && <4.18
                      , groups
                      , QuickCheck
                      , tasty
@@ -46,7 +46,7 @@ test-suite test
 
   other-modules:       Test.Data.Semigroupoid.Simple
 
-  build-depends:       base              >=4.9 && <4.17
+  build-depends:       base              >=4.9 && <4.18
                      , groups
                      , QuickCheck
                      , simple-semigroupoids

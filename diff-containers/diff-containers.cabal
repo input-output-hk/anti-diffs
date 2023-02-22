@@ -12,7 +12,7 @@ author:              Joris Dral
 maintainer:          operations@iohk.io
 category:            Data Structures
 build-type:          Simple
-tested-with:         GHC == { 8.10.7, 9.2.5 }
+tested-with:         GHC == { 8.10.7, 9.2.5, 9.4.4 }
 
 
 library
@@ -23,7 +23,7 @@ library
                       Data.Map.Diff.Strict.Internal
   other-modules:      Data.Sequence.NonEmpty.Extra
 
-  build-depends:      base              >=4.9 && <4.17
+  build-depends:      base              >=4.9 && <4.18
                     , containers
                     , groups
                     , nonempty-containers
@@ -48,7 +48,7 @@ test-suite test
   other-modules:      Test.Data.Map.Diff.Strict
                       Test.Util
 
-  build-depends:      base              >=4.9 && <4.17
+  build-depends:      base              >=4.9 && <4.18
                     , containers
                     , diff-containers
                     , groups
