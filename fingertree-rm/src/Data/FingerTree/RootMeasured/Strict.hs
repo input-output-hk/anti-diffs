@@ -30,8 +30,10 @@ module Data.FingerTree.RootMeasured.Strict (
 
 import           Data.FingerTree.Strict (Measured)
 import qualified Data.FingerTree.Strict as FT
-import           Data.Foldable
-import           Data.Group
+import           Data.Foldable (Foldable (toList))
+import           Data.Maybe (fromJust)
+import           Data.Semigroup.Cancellative (LeftCancellative,
+                     LeftReductive (..), RightCancellative, RightReductive (..))
 import           GHC.Generics (Generic)
 import           NoThunks.Class (NoThunks (..), noThunksInValues)
 
@@ -79,9 +81,10 @@ instance Measured vi a => Measured vi (StrictFingerTree vr vi a) where
 --
 -- > instance Measured T' a where -- ...
 --
--- Furthermore, we want the root measure to be a @'Group'@ instead of a
--- @'Monoid'@.
-class Group v => RootMeasured v a | a -> v where
+-- Furthermore, we want the root measure to be an asymmetrically cancellative
+-- monoid.
+class (LeftCancellative v, RightCancellative v, Monoid v)
+   => RootMeasured v a | a -> v where
   measureRoot :: a -> v
 
 -- | All @'StrictFingerTree'@s are root measured.
@@ -124,9 +127,9 @@ fromList !xs = SFT (foldMap measureRoot xs) (FT.fromList xs)
 -- i.e. that the predicate is /monotonic/.
 --
 -- A @'SplitRootMeasure'@ function @f@ should be provided that computes the root
--- measures of the left and right parts of the split. Since the @vr@ type has a
--- @'Group'@ instance, we can use the inversion operation from the @'Group'@
--- class to compute the root measures: see @'splitl'@ and @'splitr'@.
+-- measures of the left and right parts of the split. Since the @vr@ type is an
+-- asymetrically cancellative monoid, we can use 'stripPrefix' and 'stripSuffix'
+-- to compute the root measures: see @'splitl'@ and @'splitr'@.
 --
 -- Note on time complexity: the @log@ factor comes from @'FT.split'@. Moreover,
 -- the @log@ factor of the time complexity is determined by the smallest part of
@@ -177,7 +180,7 @@ splitl ::
      )
 splitl p = split p $ SplitRootMeasure $ \vr (l, _r) ->
   let vrl = foldMap measureRoot l
-  in  (vrl, invert vrl <> vr)
+  in  (vrl, fromJust $ stripPrefix vrl vr)
 
 -- | /O(log(min(i,n-i))) + O(n-i)/. Specialisation of @'split'@ that is fast if
 -- if @i@ is large.
@@ -190,7 +193,7 @@ splitr ::
      )
 splitr p = split p $ SplitRootMeasure $ \vr (_l, r) ->
   let vrr = foldMap measureRoot r
-  in  (vr <> invert vrr, vrr)
+  in  (fromJust $ stripSuffix vrr vr, vrr)
 
 class Sized a where
   size :: a -> Int
@@ -214,10 +217,10 @@ splitSized p = split p $ SplitRootMeasure $ \vr (l, r) ->
   in
     if sizel <= sizer then
       let vrl = foldMap measureRoot l
-      in  (vrl, invert vrl <> vr)
+      in  (vrl, fromJust $ stripPrefix vrl vr)
     else
       let vrr = foldMap measureRoot r
-      in  (vr ~~ vrr, vrr)
+      in  (fromJust $ stripSuffix vrr vr, vrr)
 
 {-------------------------------------------------------------------------------
   Maps
