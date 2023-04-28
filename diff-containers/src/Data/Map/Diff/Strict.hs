@@ -43,6 +43,7 @@ module Data.Map.Diff.Strict (
     -- ** Size
   , null
   , size
+  , sizeEffect
     -- ** Positivity and normality
   , isNormal
   , isPositive

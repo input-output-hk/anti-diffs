@@ -43,6 +43,7 @@ module Data.Map.Diff.Strict.Internal (
     -- ** Size
   , null
   , size
+  , sizeEffect
     -- ** Positivity and normality
   , isNormal
   , isNormalDiffHistory
@@ -66,10 +67,12 @@ module Data.Map.Diff.Strict.Internal (
 import           Control.Monad (void)
 import           Data.Bifunctor
 import           Data.Either (fromRight)
+import           Data.Foldable (foldMap')
 import           Data.Group
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import           Data.Monoid (Sum (..))
 import           Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import           Data.Sequence.NonEmpty (NESeq (..))
@@ -210,6 +213,22 @@ null (Diff m) = Map.null m
 
 size :: Diff k v -> Int
 size (Diff m) = Map.size m
+
+-- | @'sizeEffect' d@ returns a number @n@: the number of inserts minus the
+-- number of deletes for a diff @d@.
+--
+-- Applying @d@ to a 'Map' should increase the size of the 'Map' by this number,
+-- but only if @d@ does not delete a key that does not exist in the 'Map', and
+-- @d@ does not insert a key that already exists in the 'Map'.
+--
+-- Note: 'sizeEffect' does not distribute over '(<>)'.
+sizeEffect :: Diff k v -> Int
+sizeEffect (Diff m) = getSum $ foldMap' f m
+  where
+    f h = case last h of
+      Insert _ -> 1
+      Delete _ -> -1
+      _        -> error "netDifferences: found Unsafe constructor"
 
 -- | A positive diff contains only @'Insert'@s and @'Delete'@s. A negative diff
 -- can also contain @'UnsafeAntiInsert'@s and @'UnsafeAntiDelete'@s, which makes
