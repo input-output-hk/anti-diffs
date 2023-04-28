@@ -27,7 +27,7 @@ library
   build-depends:
     , base                 >=4.9 && <4.17
     , containers
-    , groups
+    , monoid-subclasses
     , nonempty-containers
     , nothunks
 
@@ -47,13 +47,13 @@ test-suite test
     Test.Util
 
   build-depends:
-    , base                  >=4.9 && <4.17
+    , base                          >=4.9 && <4.17
     , containers
     , diff-containers
-    , groups
     , nonempty-containers
     , QuickCheck
-    , simple-semigroupoids
+    , quickcheck-classes
+    , quickcheck-monoid-subclasses
     , tasty
     , tasty-quickcheck
 
