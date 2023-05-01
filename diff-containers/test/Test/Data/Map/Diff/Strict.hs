@@ -13,11 +13,13 @@ import           Data.Foldable
 import           Data.Group (Group (..))
 import           Data.Map.Diff.Strict.Internal hiding (null)
 import           Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import           Data.Proxy (Proxy (Proxy))
 import           Data.Semigroupoid.Simple.Laws
 import           Data.Sequence.NonEmpty (NESeq (..))
 import qualified Data.Sequence.NonEmpty as NESeq
+import qualified Data.Set as Set
 import           Test.Tasty (TestTree, localOption, testGroup)
 import           Test.Tasty.QuickCheck hiding (Negative, Positive)
 import           Test.Util
@@ -54,6 +56,8 @@ tests = testGroup "Data.Map.Diff.Strict" [
         , testMonoidLaws
         , testGroupLaws
         ]
+    , testProperty "prop_applyDiffAddsSizeEffect" $
+        prop_applyDiffAddsSizeEffect @Int @Int
     , testGroup "Diffing" [
           localOption (QuickCheckTests 10000) $
           testProperty "prop_diffingIsPositive" $
@@ -165,6 +169,22 @@ tests = testGroup "Data.Map.Diff.Strict" [
 {------------------------------------------------------------------------------
   Simple properties
 ------------------------------------------------------------------------------}
+
+-- | Applying a @'Diff' d@ to a 'Map' increase the @'Map'@'s size by
+-- @sizeEffect d@.
+--
+-- We ensure that we test using 'Diff's with no double inserts/deletes, which is
+-- a prerequisite for 'sizeEffect' to be useful. We create such 'Diff's by
+-- diffing two 'Map's that have disjoint keysets.
+prop_applyDiffAddsSizeEffect :: (Ord k, Eq v) => Map k v -> Map k v -> Property
+prop_applyDiffAddsSizeEffect m1 m2 = Map.keysSet m1 `Set.disjoint` Map.keysSet m2 ==>
+    Map.size (unsafeApplyDiff m1 d) === Map.size m1 + sizeEffect d
+  where
+    d = diff m1 m2
+
+--
+-- Diffing
+--
 
 -- | A @'Diff'@ computed from two @'Map'@s is positive.
 prop_diffingIsPositive ::
