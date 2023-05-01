@@ -4,14 +4,10 @@ module Test.Data.Semigroupoid.Simple (tests) where
 
 import           Data.Monoid (Sum (..))
 import           Data.Proxy
-
-import           Test.Tasty
-import           Test.Tasty.QuickCheck
-
 import           Data.Semigroupoid.Simple.Auto
 import           Data.Semigroupoid.Simple.Laws
-
-
+import           Test.Tasty
+import           Test.Tasty.QuickCheck
 
 tests :: TestTree
 tests = testGroup "Semigroupoid" [

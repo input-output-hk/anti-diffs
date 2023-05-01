@@ -7,10 +7,8 @@
 module Data.Semigroupoid.Simple.Auto (Auto (..)) where
 
 import           Data.Group (Group (..))
-
-import           Test.QuickCheck
-
 import           Data.Semigroupoid.Simple
+import           Test.QuickCheck
 
 -- | Automatically derive type class instances for groupoid-like structures
 -- from type class instances for group-like structures.

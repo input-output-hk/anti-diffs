@@ -33,12 +33,9 @@ import           Data.Maybe (fromJust)
 import           Data.Proxy
 import           Data.Semigroupoid.Simple
 import           Data.Typeable
-
 import           Test.QuickCheck
 import           Test.Tasty (TestTree, testGroup)
 import           Test.Tasty.QuickCheck (testProperty)
-
-
 
 {------------------------------------------------------------------------------
   @Test.Tasty@ combinators

@@ -11,19 +11,15 @@ module Test.Data.Map.Diff.Strict (tests) where
 import           Data.Either
 import           Data.Foldable
 import           Data.Group (Group (..))
+import           Data.Map.Diff.Strict.Internal hiding (null)
 import           Data.Map.Strict (Map)
 import           Data.Maybe
 import           Data.Proxy (Proxy (Proxy))
+import           Data.Semigroupoid.Simple.Laws
 import           Data.Sequence.NonEmpty (NESeq (..))
 import qualified Data.Sequence.NonEmpty as NESeq
-
 import           Test.Tasty (TestTree, localOption, testGroup)
 import           Test.Tasty.QuickCheck hiding (Negative, Positive)
-
-import           Data.Map.Diff.Strict.Internal hiding (null)
-
-import           Data.Semigroupoid.Simple.Laws
-
 import           Test.Util
 
 -- | Tests for "Data.Map.Diff.Strict".

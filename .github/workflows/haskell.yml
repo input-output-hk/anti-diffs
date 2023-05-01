@@ -16,16 +16,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["8.10.7", "9.2.5"]
+        ghc: ["8.10.7", "9.2.7"]
         cabal: ["3.8.1.0"]
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
-    - name: Workaround runner image issue
-      if: runner.os == 'Linux'
-      # https://github.com/actions/runner-images/issues/7061
-      run: sudo chown -R $USER /usr/local/.ghcup
-
     - name: Checkout repository
       uses: actions/checkout@v3
 
@@ -36,6 +31,10 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
         cabal-update: false
+
+    - name: "Configure cabal.project.local"
+      run: |
+        cp .github/workflows/cabal.project.local.haskell cabal.project.local
 
     - name: Cabal update
       run: cabal update
@@ -67,21 +66,18 @@ jobs:
     - name: Run tests
       run: cabal test all
 
+  # Check formatting for Haskell files
   stylish-haskell:
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["9.2.5"]
+        ghc: ["9.2.7"]
         cabal: ["3.8.1.0"]
         os: [ubuntu-latest]
 
     steps:
-    - name: Workaround runner image issue
-      # https://github.com/actions/runner-images/issues/7061
-      run: sudo chown -R $USER /usr/local/.ghcup
-
     - name: Checkout repository
       uses: actions/checkout@v3
 
@@ -128,4 +124,64 @@ jobs:
     - name: Run stylish-haskell
       run: |
         ./scripts/format-stylish.sh -p . -d
+        git diff --exit-code
+
+  # Check formatting for cabal files
+  cabal-fmt:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ["9.2.7"]
+        cabal: ["3.8.1.0"]
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install system dependencies (apt-get)
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install fd-find
+
+    - name: Setup Haskell
+      id: setup-haskell
+      uses: haskell/actions/setup@v2
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: ${{ matrix.cabal }}
+        cabal-update: false
+
+    - name: Cabal update
+      run: cabal update
+
+    - name: Setup cabal bin path
+      run: echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+
+    - name: Cache cabal store
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-cabal-cabal-fmt
+      with:
+        path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.ghc }}-cabal-fmt-${{ env.cache-name }}-
+          ${{ runner.os }}-${{ matrix.ghc }}-cabal-fmt
+          ${{ runner.os }}-${{ matrix.ghc }}
+          ${{ runner.os }}-
+
+    - name: Install cabal-fmt
+      run: cabal install cabal-fmt --constraint 'cabal-fmt == 0.1.6'
+
+    - name: Record cabal-fmt version
+      run: |
+        which cabal-fmt
+        cabal-fmt --version
+
+    - name: Run cabal-fmt
+      run: |
+        ./scripts/format-cabal.sh
         git diff --exit-code

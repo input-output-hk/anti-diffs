@@ -1,10 +1,7 @@
 module Main (main) where
 
-import           Test.Tasty
-
 import           Test.Data.Semigroupoid.Simple (tests)
-
-
+import           Test.Tasty
 
 main :: IO ()
 main = defaultMain $
