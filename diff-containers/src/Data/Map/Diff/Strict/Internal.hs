@@ -217,7 +217,7 @@ size (Diff m) = Map.size m
 -- | @'sizeEffect' d@ returns a number @n@: the number of inserts minus the
 -- number of deletes for a diff @d@.
 --
--- Applying @d@ to a 'Map' should increase the size of the 'Map' by this number,
+-- Applying @d@ to a 'Map' should increase the size of the 'Map' by @n@,
 -- but only if @d@ does not delete a key that does not exist in the 'Map', and
 -- @d@ does not insert a key that already exists in the 'Map'.
 --
