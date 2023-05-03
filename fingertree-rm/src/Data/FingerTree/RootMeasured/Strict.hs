@@ -28,14 +28,12 @@ module Data.FingerTree.RootMeasured.Strict (
   , fmap''
   ) where
 
+import           Data.FingerTree.Strict (Measured)
+import qualified Data.FingerTree.Strict as FT
 import           Data.Foldable
 import           Data.Group
 import           GHC.Generics (Generic)
-
 import           NoThunks.Class (NoThunks (..), noThunksInValues)
-
-import           Data.FingerTree.Strict (Measured)
-import qualified Data.FingerTree.Strict as FT
 
 {-------------------------------------------------------------------------------
   Strict finger trees with root measures

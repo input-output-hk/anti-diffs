@@ -56,9 +56,7 @@ module Data.Map.Diff.Strict (
   , filterOnlyKey
   ) where
 
-import           Prelude hiding (null)
-
 import           Data.Group (Group)
-import           Data.Map.Strict (Map)
-
 import           Data.Map.Diff.Strict.Internal
+import           Data.Map.Strict (Map)
+import           Prelude hiding (null)

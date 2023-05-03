@@ -63,8 +63,6 @@ module Data.Map.Diff.Strict.Internal (
   , filterOnlyKey
   ) where
 
-import           Prelude hiding (last, length, null, splitAt)
-
 import           Control.Monad (void)
 import           Data.Bifunctor
 import           Data.Either (fromRight)
@@ -81,6 +79,7 @@ import           Data.Set (Set)
 import qualified Data.Set as Set
 import           GHC.Generics (Generic)
 import           NoThunks.Class (NoThunks (..))
+import           Prelude hiding (last, length, null, splitAt)
 
 {------------------------------------------------------------------------------
   Types

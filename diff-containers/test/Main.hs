@@ -1,8 +1,7 @@
 module Main (main) where
 
-import           Test.Tasty
-
 import qualified Test.Data.Map.Diff.Strict
+import           Test.Tasty
 
 main :: IO ()
 main = defaultMain tests

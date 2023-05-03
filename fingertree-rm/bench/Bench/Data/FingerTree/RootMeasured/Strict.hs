@@ -13,19 +13,17 @@ module Bench.Data.FingerTree.RootMeasured.Strict (benchmarks) where
 import           Control.Arrow
 import           Control.DeepSeq (NFData (..))
 import           Data.Bifunctor
+import qualified Data.FingerTree as FT
+import           Data.FingerTree.RootMeasured.Strict
+import qualified Data.FingerTree.Strict as SFT
 import           Data.Foldable
 import           Data.Group
 import           Data.Monoid
-import           Text.Printf
-
 import           Test.QuickCheck
 import           Test.Tasty (TestTree, testGroup)
 import           Test.Tasty.Bench
 import           Test.Tasty.QuickCheck
-
-import qualified Data.FingerTree as FT
-import           Data.FingerTree.RootMeasured.Strict
-import qualified Data.FingerTree.Strict as SFT
+import           Text.Printf
 
 {-------------------------------------------------------------------------------
   Main benchmark tree

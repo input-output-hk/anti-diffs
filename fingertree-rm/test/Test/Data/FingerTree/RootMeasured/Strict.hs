@@ -12,16 +12,13 @@ module Test.Data.FingerTree.RootMeasured.Strict (
   , splitProp
   ) where
 
+import           Data.FingerTree.RootMeasured.Strict
 import           Data.Foldable (toList)
 import           Data.Monoid (Sum (..))
 import           Data.Proxy
-
+import           Data.Semigroupoid.Simple.Laws (testGroupWithProxy)
 import           Test.Tasty
 import           Test.Tasty.QuickCheck
-
-import           Data.FingerTree.RootMeasured.Strict
-import           Data.Semigroupoid.Simple.Laws (testGroupWithProxy)
-
 
 tests :: TestTree
 tests = testGroup "Data.FingerTree.TopMeasured.Strict" [
