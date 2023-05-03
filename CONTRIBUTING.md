@@ -35,7 +35,7 @@ The following are requirements for merging a PR into `main`:
 * Each commit should be small and should preferably address one thing. Commit messages should be useful.
 * Document and test your changes.
 * The PR should have a useful description, and it should link issues that it
-  resolves.
+  resolves (if any).
 * Changes introduced by the PR should be recorded in the relevant changelog
   files.
 * PRs should not bundle many unrelated changes.
