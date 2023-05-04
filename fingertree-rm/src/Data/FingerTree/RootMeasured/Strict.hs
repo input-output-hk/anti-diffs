@@ -81,8 +81,7 @@ instance Measured vi a => Measured vi (StrictFingerTree vr vi a) where
 --
 -- > instance Measured T' a where -- ...
 --
--- Furthermore, we want the root measure to be an asymmetrically cancellative
--- monoid.
+-- Furthermore, we want the root measure to be an cancellative monoid.
 class (LeftCancellative v, RightCancellative v, Monoid v)
    => RootMeasured v a | a -> v where
   measureRoot :: a -> v
@@ -127,9 +126,9 @@ fromList !xs = SFT (foldMap measureRoot xs) (FT.fromList xs)
 -- i.e. that the predicate is /monotonic/.
 --
 -- A @'SplitRootMeasure'@ function @f@ should be provided that computes the root
--- measures of the left and right parts of the split. Since the @vr@ type is an
--- asymetrically cancellative monoid, we can use 'stripPrefix' and 'stripSuffix'
--- to compute the root measures: see @'splitl'@ and @'splitr'@.
+-- measures of the left and right parts of the split. Since the @vr@ type is a
+-- cancellative monoid, we can use 'stripPrefix' and 'stripSuffix' to compute
+-- the root measures: see @'splitl'@ and @'splitr'@.
 --
 -- Note on time complexity: the @log@ factor comes from @'FT.split'@. Moreover,
 -- the @log@ factor of the time complexity is determined by the smallest part of

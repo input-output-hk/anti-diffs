@@ -7,13 +7,12 @@ one implementation for strict finger trees.
 ## Finger trees with root measures
 
 A possible way to represent a sequence of monoidal sums of any monoid `v` is by
-means of a finger tree, where the leaves contain elements of type `a` that can be
-measured as `v`, and the intermediate nodes contain the cumulative sums of the
-leaves.
+means of a finger tree, where the leaves contain elements of type `a` that can
+be measured as `v`, and the intermediate nodes contain the cumulative sums of
+the leaves.
 
 ```haskell
 data StrictFingerTree v a = {- omitted -}
-
 
 class Monoid v ⇒ Measured v a | a → v where
   measure :: a -> v
@@ -57,10 +56,13 @@ data StrictFingerTree vr vi a = {- omitted -}
 ```
 
 It is clear from the `cons`/`tail` example above that we should be able to both
-sum and subtract root measures. So, we require a root measure to be a `Group`.
+sum and subtract root measures. So, we require a root measure to be a
+cancellative monoid, which provides a means for subtraction through the
+`stripPrefix` and `stripSuffix` functions.
 
 ```haskell
-class Group v => RootMeasured v a | a -> v where
+class (LeftCancellative v, RightCancellative v, Monoid v)
+   => RootMeasured v a | a -> v where
   measureRoot :: a -> v
 
 -- | All @'StrictFingerTree'@s are root measured.

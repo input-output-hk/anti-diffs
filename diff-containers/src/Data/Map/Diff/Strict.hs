@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 
--- | Differences on 'Map's, represented as asymmetrically cancellative monoids.
+-- | Differences on 'Map's, represented as cancellative monoids.
 module Data.Map.Diff.Strict (
     -- * Types
     Diff
