@@ -134,15 +134,15 @@ diff m1 m2 = Diff $
 
 -- | @'fromMap' m@ creates a @'Diff'@ from the inserts and deletes in @m@.
 fromMap :: Map k (DiffEntry v) -> Diff k v
-fromMap = Diff . fmap singleton
+fromMap = Diff . Map.map singleton
 
 -- | @'fromMapInserts' m@ creates a @'Diff'@ that inserts all values in @m@.
 fromMapInserts :: Map k v -> Diff k v
-fromMapInserts = Diff . fmap singletonInsert
+fromMapInserts = Diff . Map.map singletonInsert
 
 -- | @'fromMapDeletes' m@ creates a @'Diff'@ that deletes all values in @m@.
 fromMapDeletes :: Map k v -> Diff k v
-fromMapDeletes = Diff . fmap singletonDelete
+fromMapDeletes = Diff . Map.map singletonDelete
 
 fromListDiffHistories :: Ord k => [(k, NEDiffHistory v)] -> Diff k v
 fromListDiffHistories = Diff . Map.fromList
