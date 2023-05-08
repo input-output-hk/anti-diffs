@@ -20,6 +20,8 @@ module Data.Map.Diff.Strict (
     -- * Query
     -- ** Size
   , null
+  , numDeletes
+  , numInserts
   , size
     -- * Applying diffs
   , applyDiff
