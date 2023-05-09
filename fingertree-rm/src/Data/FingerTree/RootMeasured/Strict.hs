@@ -31,7 +31,6 @@ module Data.FingerTree.RootMeasured.Strict (
 import           Data.FingerTree.Strict (Measured)
 import qualified Data.FingerTree.Strict as FT
 import           Data.Foldable (Foldable (toList))
-import           Data.Maybe (fromJust)
 import           Data.Semigroup.Cancellative (LeftCancellative,
                      LeftReductive (..), RightCancellative, RightReductive (..))
 import           GHC.Generics (Generic)
@@ -81,7 +80,7 @@ instance Measured vi a => Measured vi (StrictFingerTree vr vi a) where
 --
 -- > instance Measured T' a where -- ...
 --
--- Furthermore, we want the root measure to be an cancellative monoid.
+-- Furthermore, we want the root measure to be a cancellative monoid.
 class (LeftCancellative v, RightCancellative v, Monoid v)
    => RootMeasured v a | a -> v where
   measureRoot :: a -> v
@@ -179,7 +178,7 @@ splitl ::
      )
 splitl p = split p $ SplitRootMeasure $ \vr (l, _r) ->
   let vrl = foldMap measureRoot l
-  in  (vrl, fromJust $ stripPrefix vrl vr)
+  in  (vrl, errorIfStripFailed $ stripPrefix vrl vr)
 
 -- | /O(log(min(i,n-i))) + O(n-i)/. Specialisation of @'split'@ that is fast if
 -- if @i@ is large.
@@ -192,7 +191,7 @@ splitr ::
      )
 splitr p = split p $ SplitRootMeasure $ \vr (_l, r) ->
   let vrr = foldMap measureRoot r
-  in  (fromJust $ stripSuffix vrr vr, vrr)
+  in  (errorIfStripFailed $ stripSuffix vrr vr, vrr)
 
 class Sized a where
   size :: a -> Int
@@ -216,10 +215,17 @@ splitSized p = split p $ SplitRootMeasure $ \vr (l, r) ->
   in
     if sizel <= sizer then
       let vrl = foldMap measureRoot l
-      in  (vrl, fromJust $ stripPrefix vrl vr)
+      in  (vrl, errorIfStripFailed $ stripPrefix vrl vr)
     else
       let vrr = foldMap measureRoot r
-      in  (fromJust $ stripSuffix vrr vr, vrr)
+      in  (errorIfStripFailed $ stripSuffix vrr vr, vrr)
+
+errorIfStripFailed :: Maybe a -> a
+errorIfStripFailed (Just x) = x
+errorIfStripFailed Nothing  = error "stripPrefix/stripSuffix: stripping a \
+                                    \prefix or suffix failed, but that should \
+                                    \be impossible. Are you sure the root \
+                                    \measure is truly a cancellative monoid?"
 
 {-------------------------------------------------------------------------------
   Maps
