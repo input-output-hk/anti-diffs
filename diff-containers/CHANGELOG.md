@@ -1,5 +1,19 @@
+## Next version
 
-<a id='changelog-0.1.0.0'></a>
+### Breaking changes
+
+* Make diffs a cancellative monoid instead of a group. Amongst others, this
+  change removes the need for preconditions and invariants relating to normality
+  and positivity, which greatly simplifies the code and makes it more ergonomic,
+  while still allowing a (more restrictive) type of diff subtraction. Changes
+  include:
+  * Remove the `Group` instance for diffs.
+  * Add class instances for reductive and cancellative semigroup classes.
+  * Remove predicates related to normality and positivity.
+  * Remove unsafe constructors for `DiffEntry`.
+  * Make `applyDiff` and `applyDiffForKeys` total.
+  * Remove `unsafeApplyDiff` and `unsafeApplyDiffForKeys`.
+
 ## 0.1.0.0 — 2023-02-16
 
 First release

@@ -3,13 +3,7 @@
 
 # anti-diffs
 
-Packages for performant sequences of `Data.Map` differences.
-
-We follow processes and guidelines as established by the Consensus team at IOG.
-A nice starting point for reading `ouroboros-consensus` documentation is
-[ouroboros-network/ouroboros-consensus/README.md](
-https://github.com/input-output-hk/ouroboros-network/blob/master/ouroboros-consensus/README.md).
-
+Packages for sequences of `Data.Map` differences.
 
 ## Usage
 

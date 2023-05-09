@@ -17,7 +17,6 @@ import qualified Data.FingerTree as FT
 import           Data.FingerTree.RootMeasured.Strict
 import qualified Data.FingerTree.Strict as SFT
 import           Data.Foldable
-import           Data.Group
 import           Data.Monoid
 import           Test.QuickCheck
 import           Test.Tasty (TestTree, testGroup)
@@ -97,7 +96,6 @@ newtype Length = Length {unLength :: Int}
 
 deriving via Sum Int instance Semigroup Length
 deriving via Sum Int instance Monoid Length
-deriving via Sum Int instance Group Length
 
 instance Measured Length Int where
   measure _ = Length 1

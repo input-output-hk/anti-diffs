@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 PARGS="-p ."
 CARGS=""
 
@@ -13,8 +15,6 @@ do
 done
 
 echo "Running stylish-haskell script with arguments: $PARGS $CARGS"
-
-set -euo pipefail
 
 export LC_ALL=C.UTF-8
 
