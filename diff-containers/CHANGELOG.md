@@ -1,3 +1,8 @@
+## 1.0.1.0 — 2023-05-11
+
+* Add `numInserts` and `numDeletes` to count a diff's number of inserts and
+  deletes (respectively)
+
 ## 1.0.0.0 — 2023-05-09
 
 ### Breaking changes
