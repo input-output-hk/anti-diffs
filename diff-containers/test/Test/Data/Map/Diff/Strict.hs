@@ -12,9 +12,11 @@ import qualified Data.Map.Diff.Strict as Diff
 import           Data.Map.Diff.Strict.Internal (Diff (..), DiffEntry (..),
                      DiffHistory (DiffHistory), NEDiffHistory (NEDiffHistory))
 import           Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import           Data.Sequence.NonEmpty (NESeq (..))
 import qualified Data.Sequence.NonEmpty as NESeq
+import qualified Data.Set as Set
 import           Data.Typeable
 import           Test.QuickCheck.Classes
 import           Test.QuickCheck.Classes.Semigroup.Cancellative
@@ -60,6 +62,12 @@ tests = testGroup "Data.Map.Diff.Strict" [
         , localOption (QuickCheckTests 1000) $
           testProperty "prop_applyAllAndApplySum" $
             prop_applyAllAndApplySum @(OftenSmall Int) @(OftenSmall Int)
+        , localOption (QuickCheckTests 10000) $
+          testProperty "prop_applyDiffNumInsertsDeletes" $
+            prop_applyDiffNumInsertsDeletes @(OftenSmall Int) @(OftenSmall Int)
+        , localOption (QuickCheckTests 10000) $
+          testProperty "prop_applyDiffNumInsertsDeletesExact" $
+            prop_applyDiffNumInsertsDeletesExact @Int @Int
         ]
     ]
 
@@ -104,6 +112,44 @@ prop_applyAllAndApplySum ::
   -> Property
 prop_applyAllAndApplySum m ds =
   foldl Diff.applyDiff m ds === Diff.applyDiff m (mconcat ds)
+
+-- | Applying a @'Diff' d@ to a @'Map' m@ increases the size of @m@ by exactly
+-- @numInserts d - numDeletes d@ if @d@ inserts only new keys and @d@ only
+-- deletes existing keys.
+--
+-- Diffing two 'Map's that have disjoint keysets creates exactly a diff @d@ that
+-- only inserts new keys and deletes existing keys.
+prop_applyDiffNumInsertsDeletesExact ::
+     (Ord k, Eq v)
+  => Map k v
+  -> Map k v
+  -> Property
+prop_applyDiffNumInsertsDeletesExact m1 m2 =
+    Map.keysSet m1 `Set.disjoint` Map.keysSet m2 ==>
+      Map.size (Diff.applyDiff m1 d) ===
+        Map.size m1 + Diff.numInserts d - Diff.numDeletes d
+  where
+    d = Diff.diff m1 m2
+
+-- | Applying a @'Diff' d@ to a @'Map' m@ may increase/decrease the size of @m@
+-- up to bounds depending on the number of inserts and deletes in @d@.
+--
+-- * The size of @m@ may /decrease/ by up to the number of deletes in @d@. This
+--   happens if @d@ does not insert any new keys.
+-- * The size of @m@ may /increase/ by up to the number of inserts in @d@. This
+--   if @d@ does not delete any existing keys.
+prop_applyDiffNumInsertsDeletes ::
+     Ord k
+  => Map k v -> Diff k v -> Property
+prop_applyDiffNumInsertsDeletes m d = property $
+    lb <= n' && n' <= ub
+  where
+    n        = Map.size m
+    nInserts = Diff.numInserts d
+    nDeletes = Diff.numDeletes d
+    n'  = Map.size (Diff.applyDiff m d)
+    lb = n - nDeletes
+    ub = n + nInserts
 
 {------------------------------------------------------------------------------
   Plain @'Arbitrary'@ instances

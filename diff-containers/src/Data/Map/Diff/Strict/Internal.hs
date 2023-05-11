@@ -39,6 +39,8 @@ module Data.Map.Diff.Strict.Internal (
     -- * Query
     -- ** Size
   , null
+  , numDeletes
+  , numInserts
   , size
     -- * Applying diffs
   , applyDiff
@@ -52,9 +54,11 @@ module Data.Map.Diff.Strict.Internal (
 
 import           Control.Monad (void)
 import           Data.Bifunctor (Bifunctor (second))
+import           Data.Foldable (foldMap')
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import           Data.Monoid (Sum (..))
 import           Data.Semigroup.Cancellative (LeftCancellative,
                      LeftReductive (..), RightCancellative, RightReductive (..))
 import           Data.Sequence (Seq (..))
@@ -184,6 +188,28 @@ null (Diff m) = Map.null m
 
 size :: Diff k v -> Int
 size (Diff m) = Map.size m
+
+-- | @'numInserts' d@ returns the number of inserts in the diff @d@.
+--
+-- Note: that is, the number of diff histories that have inserts as their last
+-- change.
+numInserts :: Diff k v -> Int
+numInserts (Diff m) = getSum $ foldMap' f m
+  where
+    f h = case last h of
+      Insert _ -> 1
+      Delete _ -> 0
+
+-- | @'numDeletes' d@ returns the number of deletes in the diff @d@.
+--
+-- Note: that is, the number of diff histories that have deletes as their last
+-- change.
+numDeletes :: Diff k v -> Int
+numDeletes (Diff m) = getSum $ foldMap' f m
+  where
+    f h = case last h of
+      Insert _ -> 0
+      Delete _ -> 1
 
 {------------------------------------------------------------------------------
   Instances
