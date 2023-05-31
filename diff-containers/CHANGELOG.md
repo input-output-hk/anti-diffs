@@ -1,5 +1,9 @@
 ## next version
 
+### Non-breaking changes
+
+* Add `empty` function.
+
 ### Patch
 
 * Fix laziness in the `Functor` instance for `Diff`.

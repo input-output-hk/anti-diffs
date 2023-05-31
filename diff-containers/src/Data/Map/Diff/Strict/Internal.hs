@@ -20,6 +20,7 @@ module Data.Map.Diff.Strict.Internal (
   , toDiffHistory
     -- * Construction
   , diff
+  , empty
     -- ** Maps
   , fromMap
   , fromMapDeletes
@@ -140,6 +141,9 @@ diff m1 m2 = Diff $
   where
     unsafeAppend (NEDiffHistory h1) (NEDiffHistory h2) =
       NEDiffHistory $ h1 <> h2
+
+empty :: Diff k v
+empty = Diff Map.empty
 
 -- | @'fromMap' m@ creates a @'Diff'@ from the inserts and deletes in @m@.
 fromMap :: Map k (DiffEntry v) -> Diff k v
