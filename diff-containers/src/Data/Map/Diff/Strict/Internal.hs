@@ -77,8 +77,13 @@ import           Prelude hiding (last, length, null, splitAt)
 
 -- | A diff for key-value stores.
 newtype Diff k v = Diff (Map k (NEDiffHistory v))
-  deriving stock (Generic, Show, Eq, Functor)
+  deriving stock (Generic, Show, Eq)
   deriving anyclass (NoThunks)
+
+-- | Custom 'Functor' instance, since @'Functor' ('Map' k)@ is actually the
+-- 'Functor' instance for a lazy Map.
+instance Functor (Diff k) where
+  fmap f (Diff m) = Diff $ Map.map (fmap f) m
 
 -- | A history of changes to a value in a key-value store.
 --
