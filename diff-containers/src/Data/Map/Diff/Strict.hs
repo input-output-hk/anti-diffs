@@ -9,6 +9,7 @@ module Data.Map.Diff.Strict (
   , keysSet
     -- * Construction
   , diff
+  , empty
     -- ** Maps
   , fromMap
   , fromMapDeletes
