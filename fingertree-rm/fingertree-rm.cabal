@@ -39,9 +39,8 @@ test-suite test
   main-is:          Main.hs
   other-modules:    Test.Data.FingerTree.RootMeasured.Strict
   build-depends:
-    , base                  >=4.9 && <4.19
+    , base              >=4.9 && <4.19
     , fingertree-rm
-    , simple-semigroupoids
     , tasty
     , tasty-quickcheck
 

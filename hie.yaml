@@ -14,9 +14,3 @@ cradle:
 
     - path: "./fingertree-rm/bench"
       component: "fingertree-rm:bench:bench"
-
-    - path: "./simple-semigroupoids/src"
-      component: "lib:simple-semigroupoids"
-
-    - path: "./simple-semigroupoids/test"
-      component: "simple-semigroupoids:test:test"
