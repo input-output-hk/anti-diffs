@@ -13,4 +13,3 @@ repository cardano-haskell-packages
 packages:
   ./diff-containers
   ./fingertree-rm
-  ./simple-semigroupoids

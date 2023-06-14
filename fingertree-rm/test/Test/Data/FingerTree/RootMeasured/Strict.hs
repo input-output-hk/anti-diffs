@@ -16,19 +16,16 @@ import           Data.FingerTree.RootMeasured.Strict
 import           Data.Foldable (toList)
 import           Data.Monoid (Sum (..))
 import           Data.Proxy
-import           Data.Semigroupoid.Simple.Laws (testGroupWithProxy)
 import           Test.Tasty
 import           Test.Tasty.QuickCheck
 
 tests :: TestTree
 tests = testGroup "Data.FingerTree.TopMeasured.Strict" [
-    testGroupWithProxy (Proxy @T) [
-        \pr -> testProperty "splitProp (simple Group)" $
-          \lr n sft -> splitProp pr lr (getPositive n <) sft
-      , testProperty "appendProp (simple Group)" .
-          appendProp
-      ]
-  ]
+      testProperty "splitProp" $ \lr n sft ->
+          splitProp (Proxy @T) lr (getPositive n <) sft
+    , testProperty "appendProp (simple Group)" $
+        appendProp (Proxy @T)
+    ]
 
 type T = StrictFingerTree (Sum Int) (Sum Int) (Small Int)
 
