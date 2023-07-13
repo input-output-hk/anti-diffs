@@ -9,8 +9,8 @@
 module Test.Data.Map.Diff.Strict (tests) where
 
 import qualified Data.Map.Diff.Strict as Diff
-import           Data.Map.Diff.Strict.Internal (Diff (..), DiffEntry (..),
-                     DiffHistory (DiffHistory), NEDiffHistory (NEDiffHistory))
+import           Data.Map.Diff.Strict.Internal (Delta (..), DeltaHistory (..),
+                     Diff (..))
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Data.Maybe
@@ -32,16 +32,8 @@ tests :: TestTree
 tests = testGroup "Data.Map.Diff.Strict" [
       localOption (QuickCheckTests 10000) $
       testGroup "quickcheck-classes" [
-          lawsTestOne  (Proxy @(NEDiffHistory (OftenSmall Int))) [
+          lawsTestOne  (Proxy @(DeltaHistory (OftenSmall Int))) [
               semigroupLaws
-            ]
-        , lawsTestOne  (Proxy @(DiffHistory (OftenSmall Int))) [
-              semigroupLaws
-            , monoidLaws
-            , leftReductiveLaws
-            , rightReductiveLaws
-            , leftCancellativeLaws
-            , rightCancellativeLaws
             ]
         , lawsTestOne  (Proxy @(Diff (OftenSmall Int) (OftenSmall Int))) [
               semigroupLaws
@@ -157,14 +149,13 @@ prop_applyDiffNumInsertsDeletes m d = property $
 
 deriving newtype instance (Ord k, Arbitrary k, Arbitrary v)
                        => Arbitrary (Diff k v)
-deriving newtype instance Arbitrary v => Arbitrary (DiffHistory v)
 
-instance Arbitrary v => Arbitrary (NEDiffHistory v) where
-  arbitrary = NEDiffHistory <$> ((:<||) <$> arbitrary <*> arbitrary)
-  shrink (NEDiffHistory h) =
-    fmap NEDiffHistory $ mapMaybe NESeq.nonEmptySeq $ shrink (NESeq.toSeq h)
+instance Arbitrary v => Arbitrary (DeltaHistory v) where
+  arbitrary = DeltaHistory <$> ((:<||) <$> arbitrary <*> arbitrary)
+  shrink (DeltaHistory h) =
+    fmap DeltaHistory $ mapMaybe NESeq.nonEmptySeq $ shrink (NESeq.toSeq h)
 
-instance Arbitrary v => Arbitrary (DiffEntry v) where
+instance Arbitrary v => Arbitrary (Delta v) where
   arbitrary = oneof [
       Insert <$> arbitrary
     , Delete <$> arbitrary
