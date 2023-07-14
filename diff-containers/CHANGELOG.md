@@ -1,8 +1,16 @@
 ## next version
 
+### Breaking changes
+
+* Rename `DiffEntry` type to `Delta`. As a result, `foldMapDiffEntry` is renamed
+  to `foldMapDelta`, and `traverseDiffEntryWithKey_` is renamed to
+  `traverseDeltaWithKey_`.`
+
 ### Non-breaking changes
 
 * Add `empty` function.
+* Internally, rename `NEDiffHistory` to `DeltaHistory` and remove `DiffHistory`
+  to avoid duplication.
 
 ### Patch
 

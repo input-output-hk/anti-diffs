@@ -3,8 +3,8 @@
 -- | Differences on 'Map's, represented as cancellative monoids.
 module Data.Map.Diff.Strict (
     -- * Types
-    Diff
-  , DiffEntry (..)
+    Delta (..)
+  , Diff
     -- * Conversion
   , keysSet
     -- * Construction
@@ -28,8 +28,8 @@ module Data.Map.Diff.Strict (
   , applyDiff
   , applyDiffForKeys
     -- * Folds and traversals
-  , foldMapDiffEntry
-  , traverseDiffEntryWithKey_
+  , foldMapDelta
+  , traverseDeltaWithKey_
     -- * Filter
   , filterOnlyKey
   ) where

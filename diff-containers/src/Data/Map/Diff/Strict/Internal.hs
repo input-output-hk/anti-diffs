@@ -4,20 +4,17 @@
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 
 -- | See the module documentation for "Data.Map.Diff.Strict".
 module Data.Map.Diff.Strict.Internal (
     -- * Types
-    Diff (..)
-  , DiffEntry (..)
-  , DiffHistory (..)
-  , NEDiffHistory (..)
+    Delta (..)
+  , DeltaHistory (..)
+  , Diff (..)
     -- * Conversion
   , keysSet
-    -- ** Diff histories
-  , nonEmptyDiffHistory
-  , toDiffHistory
     -- * Construction
   , diff
   , empty
@@ -28,14 +25,14 @@ module Data.Map.Diff.Strict.Internal (
     -- ** Lists
   , fromList
   , fromListDeletes
-  , fromListDiffHistories
+  , fromListDeltaHistories
   , fromListInserts
-    -- ** Diff histories
+    -- ** Delta history
   , singleton
   , singletonDelete
   , singletonInsert
     -- * Deconstruction
-    -- ** Diff histories
+    -- ** Delta history
   , last
     -- * Query
     -- ** Size
@@ -47,8 +44,8 @@ module Data.Map.Diff.Strict.Internal (
   , applyDiff
   , applyDiffForKeys
     -- * Folds and traversals
-  , foldMapDiffEntry
-  , traverseDiffEntryWithKey_
+  , foldMapDelta
+  , traverseDeltaWithKey_
     -- * Filter
   , filterOnlyKey
   ) where
@@ -62,7 +59,6 @@ import qualified Data.Map.Strict as Map
 import           Data.Monoid (Sum (..))
 import           Data.Semigroup.Cancellative (LeftCancellative,
                      LeftReductive (..), RightCancellative, RightReductive (..))
-import           Data.Sequence (Seq (..))
 import           Data.Sequence.NonEmpty (NESeq (..))
 import qualified Data.Sequence.NonEmpty as NESeq
 import           Data.Sequence.NonEmpty.Extra ()
@@ -77,7 +73,7 @@ import           Prelude hiding (last, length, null, splitAt)
 ------------------------------------------------------------------------------}
 
 -- | A diff for key-value stores.
-newtype Diff k v = Diff (Map k (NEDiffHistory v))
+newtype Diff k v = Diff (Map k (DeltaHistory v))
   deriving stock (Generic, Show, Eq)
   deriving anyclass (NoThunks)
 
@@ -86,22 +82,17 @@ newtype Diff k v = Diff (Map k (NEDiffHistory v))
 instance Functor (Diff k) where
   fmap f (Diff m) = Diff $ Map.map (fmap f) m
 
--- | A history of changes to a value in a key-value store.
+-- | A non-empty history of changes to a value in a key-value store.
 --
 -- A history has an implicit sense of ordering according to time: from left to
 -- right. This means that the leftmost element in the history is the /earliest/
 -- change, while the rightmost element in the history is the /latest/ change.
-newtype DiffHistory v = DiffHistory { getDiffHistory :: Seq (DiffEntry v) }
-  deriving stock (Generic, Show, Eq, Functor)
-  deriving newtype (NoThunks)
-
--- | A non-empty @'DiffHistory'@.
-newtype NEDiffHistory v = NEDiffHistory { getNEDiffHistory :: NESeq (DiffEntry v) }
+newtype DeltaHistory v = DeltaHistory { getDeltaHistory :: NESeq (Delta v) }
   deriving stock (Generic, Show, Eq, Functor)
   deriving newtype (NoThunks)
 
 -- | A change to a value in a key-value store.
-data DiffEntry v =
+data Delta v =
       Insert !v
     | Delete !v
   deriving stock (Generic, Show, Eq, Functor)
@@ -113,12 +104,6 @@ data DiffEntry v =
 
 keysSet :: Diff k v -> Set k
 keysSet (Diff m) = Map.keysSet m
-
-toDiffHistory :: NEDiffHistory v -> DiffHistory v
-toDiffHistory (NEDiffHistory sq) = DiffHistory $ NESeq.toSeq sq
-
-nonEmptyDiffHistory :: DiffHistory v -> Maybe (NEDiffHistory v)
-nonEmptyDiffHistory (DiffHistory sq) = NEDiffHistory <$> NESeq.nonEmptySeq sq
 
 {------------------------------------------------------------------------------
   Construction
@@ -134,19 +119,16 @@ diff m1 m2 = Diff $
         if v1 == v2 then
           Nothing
         else
-          Just $ singletonDelete v1 `unsafeAppend` singletonInsert v2
+          Just $ singletonDelete v1 <> singletonInsert v2
       )
       m1
       m2
-  where
-    unsafeAppend (NEDiffHistory h1) (NEDiffHistory h2) =
-      NEDiffHistory $ h1 <> h2
 
 empty :: Diff k v
 empty = Diff Map.empty
 
 -- | @'fromMap' m@ creates a @'Diff'@ from the inserts and deletes in @m@.
-fromMap :: Map k (DiffEntry v) -> Diff k v
+fromMap :: Map k (Delta v) -> Diff k v
 fromMap = Diff . Map.map singleton
 
 -- | @'fromMapInserts' m@ creates a @'Diff'@ that inserts all values in @m@.
@@ -157,36 +139,36 @@ fromMapInserts = Diff . Map.map singletonInsert
 fromMapDeletes :: Map k v -> Diff k v
 fromMapDeletes = Diff . Map.map singletonDelete
 
-fromListDiffHistories :: Ord k => [(k, NEDiffHistory v)] -> Diff k v
-fromListDiffHistories = Diff . Map.fromList
+fromListDeltaHistories :: Ord k => [(k, DeltaHistory v)] -> Diff k v
+fromListDeltaHistories = Diff . Map.fromList
 
 -- | @'fromList' xs@ creates a @'Diff'@ from the inserts and deletes in @xs@.
-fromList :: Ord k => [(k, DiffEntry v)] -> Diff k v
-fromList = fromListDiffHistories . fmap (second singleton)
+fromList :: Ord k => [(k, Delta v)] -> Diff k v
+fromList = fromListDeltaHistories . fmap (second singleton)
 
 -- | @'fromListInserts' xs@ creates a @'Diff'@ that inserts all values in @xs@.
 fromListInserts :: Ord k => [(k, v)] -> Diff k v
-fromListInserts = fromListDiffHistories . fmap (second singletonInsert)
+fromListInserts = fromListDeltaHistories . fmap (second singletonInsert)
 
 -- | @'fromListDeletes' xs@ creates a @'Diff'@ that deletes all values in @xs@.
 fromListDeletes :: Ord k => [(k, v)] -> Diff k v
-fromListDeletes = fromListDiffHistories . fmap (second singletonDelete)
+fromListDeletes = fromListDeltaHistories . fmap (second singletonDelete)
 
-singleton :: DiffEntry v -> NEDiffHistory v
-singleton = NEDiffHistory . NESeq.singleton
+singleton :: Delta v -> DeltaHistory v
+singleton = DeltaHistory . NESeq.singleton
 
-singletonInsert :: v -> NEDiffHistory v
+singletonInsert :: v -> DeltaHistory v
 singletonInsert = singleton . Insert
 
-singletonDelete :: v -> NEDiffHistory v
+singletonDelete :: v -> DeltaHistory v
 singletonDelete = singleton . Delete
 
 {------------------------------------------------------------------------------
   Deconstruction
 ------------------------------------------------------------------------------}
 
-last :: NEDiffHistory v -> DiffEntry v
-last (NEDiffHistory (_ NESeq.:||> e)) = e
+last :: DeltaHistory v -> Delta v
+last (DeltaHistory (_ NESeq.:||> e)) = e
 
 {------------------------------------------------------------------------------
   Query
@@ -242,8 +224,14 @@ instance (Ord k, Eq v) => LeftReductive (Diff k v) where
         m1
         m2
     where
-      f _ h1 h2 = nonEmptyDiffHistory <$>
-          stripPrefix (toDiffHistory h1) (toDiffHistory h2)
+      f :: k
+        -> DeltaHistory v
+        -> DeltaHistory v
+        -> Maybe (Maybe (DeltaHistory v))
+      f _ h1 h2 = fmap DeltaHistory . NESeq.nonEmptySeq <$>
+          stripPrefix
+            (NESeq.toSeq $ getDeltaHistory h1)
+            (NESeq.toSeq $ getDeltaHistory h2)
 
 instance (Ord k, Eq v) => RightReductive (Diff k v) where
   stripSuffix :: Diff k v -> Diff k v -> Maybe (Diff k v)
@@ -255,20 +243,19 @@ instance (Ord k, Eq v) => RightReductive (Diff k v) where
         m1
         m2
     where
-      f _ h1 h2 = nonEmptyDiffHistory <$>
-          stripSuffix (toDiffHistory h1) (toDiffHistory h2)
+      f :: k
+        -> DeltaHistory v
+        -> DeltaHistory v
+        -> Maybe (Maybe (DeltaHistory v))
+      f _ h1 h2 = fmap DeltaHistory . NESeq.nonEmptySeq <$>
+          stripSuffix
+            (NESeq.toSeq $ getDeltaHistory h1)
+            (NESeq.toSeq $ getDeltaHistory h2)
 
 instance (Ord k, Eq v) => LeftCancellative (Diff k v)
 instance (Ord k, Eq v) => RightCancellative (Diff k v)
 
-deriving newtype instance Semigroup (NEDiffHistory v)
-
-deriving newtype instance Semigroup (DiffHistory v)
-deriving newtype instance Monoid (DiffHistory v)
-deriving newtype instance Eq v => LeftReductive (DiffHistory v)
-deriving newtype instance Eq v => RightReductive (DiffHistory v)
-deriving newtype instance Eq v => LeftCancellative (DiffHistory v)
-deriving newtype instance Eq v => RightCancellative(DiffHistory v)
+deriving newtype instance Semigroup (DeltaHistory v)
 
 {------------------------------------------------------------------------------
   Applying diffs
@@ -288,12 +275,12 @@ applyDiff m (Diff diffs) =
       m
       diffs
   where
-    newKeys :: k -> NEDiffHistory v -> Maybe v
+    newKeys :: k -> DeltaHistory v -> Maybe v
     newKeys _k h = case last h of
       Insert x -> Just x
       Delete _ -> Nothing
 
-    oldKeys :: k -> v -> NEDiffHistory v -> Maybe v
+    oldKeys :: k -> v -> DeltaHistory v -> Maybe v
     oldKeys _k _v1 h = case last h of
       Insert x -> Just x
       Delete _ -> Nothing
@@ -314,18 +301,18 @@ applyDiffForKeys m ks (Diff diffs) =
   Folds and traversals
 ------------------------------------------------------------------------------}
 
--- | @'foldMap'@ over the last diff entry in each diff history.
-foldMapDiffEntry :: (Monoid m) => (DiffEntry v -> m) -> Diff k v -> m
-foldMapDiffEntry f (Diff m) =
-  foldMap (f . NESeq.last . getNEDiffHistory) m
+-- | @'foldMap'@ over the last delta in each delta history.
+foldMapDelta :: (Monoid m) => (Delta v -> m) -> Diff k v -> m
+foldMapDelta f (Diff m) =
+  foldMap (f . NESeq.last . getDeltaHistory) m
 
--- | Traversal with keys over the last diff entry in each diff history.
-traverseDiffEntryWithKey_ ::
+-- | Traversal with keys over the last delta in each delta history.
+traverseDeltaWithKey_ ::
      Applicative t
-  => (k -> DiffEntry v -> t a)
+  => (k -> Delta v -> t a)
   -> Diff k v
   -> t ()
-traverseDiffEntryWithKey_ f (Diff m) = void $ Map.traverseWithKey g m
+traverseDeltaWithKey_ f (Diff m) = void $ Map.traverseWithKey g m
   where
     g k dh = f k (last dh)
 
