@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveAnyClass             #-}
-{-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
@@ -45,6 +45,7 @@ module Data.Map.Diff.Strict.Internal (
   , applyDiffForKeys
     -- * Folds and traversals
   , foldMapDelta
+  , mapMaybeDiff
   , traverseDeltaWithKey_
     -- * Filter
   , filterOnlyKey
@@ -52,14 +53,16 @@ module Data.Map.Diff.Strict.Internal (
 
 import           Control.Monad (void)
 import           Data.Bifunctor (Bifunctor (second))
-import           Data.Foldable (foldMap')
+import           Data.Foldable (foldMap', toList)
 import qualified Data.Map.Merge.Strict as Merge
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import qualified Data.Maybe as Maybe
 import           Data.Monoid (Sum (..))
 import           Data.Semigroup.Cancellative (LeftCancellative,
                      LeftReductive (..), RightCancellative, RightReductive (..))
-import           Data.Sequence.NonEmpty (NESeq (..))
+import qualified Data.Sequence as Seq
+import           Data.Sequence.NonEmpty (NESeq (..), nonEmptySeq)
 import qualified Data.Sequence.NonEmpty as NESeq
 import           Data.Sequence.NonEmpty.Extra ()
 import           Data.Set (Set)
@@ -95,7 +98,7 @@ newtype DeltaHistory v = DeltaHistory { getDeltaHistory :: NESeq (Delta v) }
 data Delta v =
       Insert !v
     | Delete !v
-  deriving stock (Generic, Show, Eq, Functor)
+  deriving stock (Generic, Show, Eq, Functor, Foldable, Traversable)
   deriving anyclass (NoThunks)
 
 {------------------------------------------------------------------------------
@@ -322,3 +325,15 @@ traverseDeltaWithKey_ f (Diff m) = void $ Map.traverseWithKey g m
 
 filterOnlyKey :: (k -> Bool) -> Diff k v -> Diff k v
 filterOnlyKey f (Diff m) = Diff $ Map.filterWithKey (const . f) m
+
+mapMaybeSeq :: (v -> Maybe v') -> DeltaHistory v -> Maybe (DeltaHistory v')
+mapMaybeSeq f =
+    fmap DeltaHistory
+  . nonEmptySeq
+  . Seq.fromList
+  . Maybe.mapMaybe (traverse f)
+  . toList
+  . getDeltaHistory
+
+mapMaybeDiff :: (v -> Maybe v') -> Diff k v -> Diff k v'
+mapMaybeDiff f (Diff d) = Diff $ Map.mapMaybe (mapMaybeSeq f) d
