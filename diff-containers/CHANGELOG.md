@@ -1,3 +1,9 @@
+## 1.1.1.0 — 2023-08-01
+
+### Non-breaking changes
+
+* Define `mapMaybeDiff` in the same spirit as `Maybe.mapMaybe`.
+
 ## 1.1.0.0 — 2023-07-14
 
 ### Breaking changes
