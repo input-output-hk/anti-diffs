@@ -91,7 +91,7 @@ h3 = stripSuffix h2 (h1 <> h2) == Just h1
 h4 = stripPrefix h1 (h1 <> h2) == Just h2
 ```
 
-Stripping prefixes/suffixes of diffs follows from pairwise stripping
+Stripping prefixes/suffixes of diffs follows from pointwise stripping
 prefixes/suffixes of delta histories. As such, diffs have `LeftReductive`,
 `LeftCancellative`, `RightReductive` and `RightCancellative` instances as well.
 See this example:
