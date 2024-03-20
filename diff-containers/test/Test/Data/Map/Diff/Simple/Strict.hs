@@ -7,21 +7,16 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Test.Data.Map.Diff.Strict (tests) where
+module Test.Data.Map.Diff.Simple.Strict (tests) where
 
 import qualified Data.Map.Diff.Class as Class
-import qualified Data.Map.Diff.Strict as Diff
-import           Data.Map.Diff.Strict.Internal (Delta (..), DeltaHistory (..),
-                     Diff (..))
+import           Data.Map.Diff.Simple.Strict (Delta (..), Diff (..))
+import qualified Data.Map.Diff.Simple.Strict as Diff
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Maybe
-import           Data.Sequence.NonEmpty (NESeq (..))
-import qualified Data.Sequence.NonEmpty as NESeq
 import qualified Data.Set as Set
 import           Data.Typeable
 import           Test.QuickCheck.Classes
-import           Test.QuickCheck.Classes.Semigroup.Cancellative
 import           Test.Tasty (TestTree, localOption, testGroup)
 import           Test.Tasty.QuickCheck hiding (Negative, Positive)
 import           Test.Util
@@ -31,19 +26,12 @@ import           Test.Util
 -- Note: the laws from "Test.QuickCheck.Classes.Semigroup.Cancellative" are not
 -- affected by @'localOption' ('QuickCheckTests' n)@
 tests :: TestTree
-tests = testGroup "Test.Data.Map.Diff.Strict" [
+tests = testGroup "Test.Data.Map.Diff.Simple.Strict" [
       localOption (QuickCheckTests 10000) $
       testGroup "quickcheck-classes" [
-          lawsTestOne  (Proxy @(DeltaHistory (OftenSmall Int))) [
-              semigroupLaws
-            ]
-        , lawsTestOne  (Proxy @(Diff (OftenSmall Int) (OftenSmall Int))) [
+          lawsTestOne  (Proxy @(Diff (OftenSmall Int) (OftenSmall Int))) [
               semigroupLaws
             , monoidLaws
-            , leftReductiveLaws
-            , rightReductiveLaws
-            , leftCancellativeLaws
-            , rightCancellativeLaws
             ]
         ]
     , testGroup "Applying diffs" [
@@ -150,16 +138,11 @@ prop_applyDiffNumInsertsDeletes m d = property $
 deriving newtype instance (Ord k, Arbitrary k, Arbitrary v)
                        => Arbitrary (Diff k v)
 
-instance Arbitrary v => Arbitrary (DeltaHistory v) where
-  arbitrary = DeltaHistory <$> ((:<||) <$> arbitrary <*> arbitrary)
-  shrink (DeltaHistory h) =
-    fmap DeltaHistory $ mapMaybe NESeq.nonEmptySeq $ shrink (NESeq.toSeq h)
-
 instance Arbitrary v => Arbitrary (Delta v) where
   arbitrary = oneof [
       Insert <$> arbitrary
-    , Delete <$> arbitrary
+    , pure Delete
     ]
   shrink de = case de of
     Insert x -> Insert <$> shrink x
-    Delete x -> Delete <$> shrink x
+    Delete   -> []
