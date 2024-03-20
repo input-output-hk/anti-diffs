@@ -2,16 +2,15 @@ cabal-version: 3.0
 name:          diff-containers
 version:       1.1.1.0
 synopsis:      Diffs for containers
-
--- description:
+description:   Diffs for containers.
 license:       Apache-2.0
 license-files:
   LICENSE
   NOTICE
 
-copyright:     2022-2023 Input Output (Hong Kong) Ltd.
+copyright:     2022-2023 Input Output Global Inc (IOG).
 author:        Joris Dral
-maintainer:    operations@iohk.io
+maintainer:    operations@iohk.io, Joris Dral (joris@well-typed.com)
 category:      Data Structures
 build-type:    Simple
 tested-with:   GHC ==8.10 || ==9.2 || ==9.4 || ==9.6
