@@ -1,19 +1,23 @@
-cabal-version: 3.0
-name:          fingertree-rm
-version:       1.0.0.1
-synopsis:      Finger-trees with root measures
-description:   Finger-trees with root measures.
-license:       Apache-2.0
+cabal-version:   3.0
+name:            fingertree-rm
+version:         1.0.0.2
+synopsis:        Finger-trees with root measures
+description:     Finger-trees with root measures.
+license:         Apache-2.0
 license-files:
   LICENSE
   NOTICE
 
-copyright:     2022-2024 Input Output Global Inc (IOG).
-author:        Joris Dral
-maintainer:    operations@iohk.io, Joris Dral (joris@well-typed.com)
-category:      Data Structures
-build-type:    Simple
-tested-with:   GHC ==8.10 || ==9.2 || ==9.4 || ==9.6 || ==9.8
+extra-doc-files:
+  CHANGELOG.md
+  README.md
+
+copyright:       2022-2024 Input Output Global Inc (IOG).
+author:          Joris Dral
+maintainer:      operations@iohk.io, Joris Dral (joris@well-typed.com)
+category:        Data Structures
+build-type:      Simple
+tested-with:     GHC ==8.10 || ==9.2 || ==9.4 || ==9.6 || ==9.8
 
 library
   default-language: Haskell2010

@@ -1,5 +1,7 @@
-[![Haskell CI](https://img.shields.io/github/actions/workflow/status/input-output-hk/anti-diffs/haskell.yml?label=Build&style=for-the-badge)](https://github.com/input-output-hk/anti-diffs/actions/workflows/haskell.yml)
-[![handbook](https://img.shields.io/badge/policy-Cardano%20Engineering%20Handbook-informational?style=for-the-badge)](https://input-output-hk.github.io/cardano-engineering-handbook)
+[![handbook](https://img.shields.io/badge/policy-Cardano%20Engineering%20Handbook-informational)](https://input-output-hk.github.io/cardano-engineering-handbook)
+[![Haskell CI](https://img.shields.io/github/actions/workflow/status/input-output-hk/anti-diffs/haskell.yml?label=Build)](https://github.com/input-output-hk/anti-diffs/actions/workflows/haskell.yml)
+[![Documentation CI](https://img.shields.io/github/actions/workflow/status/input-output-hk/anti-diffs/documentation.yml?label=Documentation%20build)](https://github.com/input-output-hk/anti-diffs/actions/workflows/documentation.yml)
+[![Haddocks](https://img.shields.io/badge/documentation-Haddocks-purple)](https://input-output-hk.github.io/anti-diffs/)
 
 # anti-diffs
 
