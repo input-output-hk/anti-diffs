@@ -1,3 +1,9 @@
+## next release — ????-??-??
+
+### Patch
+
+* Make it build with `ghc-9.8`.
+
 ## 1.0.0.1 — 2023-07-14
 
 ### Patch

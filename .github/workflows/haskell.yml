@@ -4,20 +4,26 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 
 permissions:
   contents: read
 
 jobs:
+  # Build and test
   build:
-
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["8.10.7", "9.2.8", "9.4.5", "9.6.2"]
-        cabal: ["3.10.1.0"]
+        ghc: ["8.10.7", "9.2.8", "9.4.8", "9.6.4", "9.8.2"]
+        cabal: ["3.10.2.1"]
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
@@ -26,44 +32,55 @@ jobs:
 
     - name: Setup Haskell
       id: setup-haskell
-      uses: haskell/actions/setup@v2
+      uses: haskell-actions/setup@v2
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
-        cabal-update: false
+        cabal-update: true
 
-    - name: "Configure cabal.project.local"
+    - name: Configure the build
       run: |
-        cp .github/workflows/cabal.project.local.haskell cabal.project.local
-
-    - name: Cabal update
-      run: cabal update
+        cabal configure --enable-tests --enable-benchmark --ghc-options="-Werror" --ghc-options="-fno-ignore-asserts"
+        cat cabal.project.local
 
     - name: Record cabal dependencies
       id: record-deps
       run: |
         cabal build all --dry-run
 
-    - name: Cache cabal store
-      uses: actions/cache@v3
+    - name: "Restore cache"
+      uses: actions/cache/restore@v4
+      id: restore-cabal-cache
       env:
         cache-name: cache-cabal-build
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store }}
         key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
         restore-keys: |
+          ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
+          ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-
           ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-
-          ${{ runner.os }}-${{ matrix.ghc }}-
-          ${{ runner.os }}-
 
     - name: Install cabal dependencies
+      id: build-dependencies
       run: cabal build --only-dependencies --enable-tests --enable-benchmarks all
 
+    - name: "Save cache"
+      uses: actions/cache/save@v4
+      id: save-cabal-cache
+      # Note: cache-hit will be set to true only when cache hit occurs for the
+      # exact key match. For a partial key match via restore-keys or a cache
+      # miss, it will be set to false.
+      if: steps.build-dependencies.outcome == 'success' && steps.restore-cabal-cache.outputs.cache-hit != 'true'
+      with:
+        path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        key:  ${{ steps.restore-cabal-cache.outputs.cache-primary-key }}
+
     - name: Build
-      run: cabal build --enable-tests --enable-benchmarks all
+      run: cabal build all
 
     - name: Run tests
-      run: cabal test all
+      run: cabal test -j1 --test-show-details=direct all
 
   # Check formatting for Haskell files
   stylish-haskell:
@@ -72,8 +89,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["9.2.8"]
-        cabal: ["3.10.1.0"]
+        ghc: ["9.6.4"]
+        cabal: ["3.10.2.1"]
         os: [ubuntu-latest]
 
     steps:
@@ -87,7 +104,7 @@ jobs:
 
     - name: Setup Haskell
       id: setup-haskell
-      uses: haskell/actions/setup@v2
+      uses: haskell-actions/setup@v2
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
@@ -105,14 +122,10 @@ jobs:
         cache-name: cache-cabal-stylish
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-
-          ${{ runner.os }}-${{ matrix.ghc }}-
-          ${{ runner.os }}-
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}
 
     - name: Install stylish-haskell
-      run: cabal install stylish-haskell --constraint 'stylish-haskell == 0.14.4.0'
+      run: cabal install --ignore-project stylish-haskell --constraint 'stylish-haskell == 0.14.6.0'
 
     - name: Record stylish-haskell version
       run: |
@@ -131,8 +144,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["9.2.8"]
-        cabal: ["3.10.1.0"]
+        ghc: ["9.6.4"]
+        cabal: ["3.10.2.1"]
         os: [ubuntu-latest]
 
     steps:
@@ -146,7 +159,7 @@ jobs:
 
     - name: Setup Haskell
       id: setup-haskell
-      uses: haskell/actions/setup@v2
+      uses: haskell-actions/setup@v2
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
@@ -164,14 +177,10 @@ jobs:
         cache-name: cache-cabal-cabal-fmt
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-
-          ${{ runner.os }}-${{ matrix.ghc }}-
-          ${{ runner.os }}-
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}
 
     - name: Install cabal-fmt
-      run: cabal install cabal-fmt --constraint 'cabal-fmt == 0.1.6'
+      run: cabal install --ignore-project cabal-fmt --constraint 'cabal-fmt == 0.1.11'
 
     - name: Record cabal-fmt version
       run: |
@@ -182,3 +191,33 @@ jobs:
       run: |
         ./scripts/format-cabal.sh
         git diff --exit-code
+
+  # Check cabal files
+  cabal-check:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ["9.6.4"]
+        cabal: ["3.10.2.1"]
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup Haskell
+      id: setup-haskell
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: ${{ matrix.cabal }}
+        cabal-update: false
+
+    - name: Cabal update
+      run: cabal update
+
+    - name: Run cabal check
+      run: |
+        ./scripts/check-cabal.sh
