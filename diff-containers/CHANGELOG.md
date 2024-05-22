@@ -1,3 +1,9 @@
+## 1.2.0.0 — 2024-05-24
+
+### Breaking
+
+- Remove value from `Delta(Delete)`.
+
 ## 1.1.1.1 — 2024-03-22
 
 ### Patch
