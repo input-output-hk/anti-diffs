@@ -1,6 +1,6 @@
 cabal-version:   3.0
 name:            diff-containers
-version:         1.1.1.1
+version:         1.2.0.0
 synopsis:        Diffs for containers
 description:     Diffs for containers.
 license:         Apache-2.0
