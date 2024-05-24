@@ -97,7 +97,7 @@ newtype DeltaHistory v = DeltaHistory { getDeltaHistory :: NESeq (Delta v) }
 -- | A change to a value in a key-value store.
 data Delta v =
       Insert !v
-    | Delete !v
+    | Delete
   deriving stock (Generic, Show, Eq, Functor, Foldable, Traversable)
   deriving anyclass (NoThunks)
 
@@ -164,7 +164,7 @@ singletonInsert :: v -> DeltaHistory v
 singletonInsert = singleton . Insert
 
 singletonDelete :: v -> DeltaHistory v
-singletonDelete = singleton . Delete
+singletonDelete _ = singleton Delete
 
 {------------------------------------------------------------------------------
   Deconstruction
@@ -192,7 +192,7 @@ numInserts (Diff m) = getSum $ foldMap' f m
   where
     f h = case last h of
       Insert _ -> 1
-      Delete _ -> 0
+      Delete   -> 0
 
 -- | @'numDeletes' d@ returns the number of deletes in the diff @d@.
 --
@@ -203,7 +203,7 @@ numDeletes (Diff m) = getSum $ foldMap' f m
   where
     f h = case last h of
       Insert _ -> 0
-      Delete _ -> 1
+      Delete   -> 1
 
 {------------------------------------------------------------------------------
   Instances
@@ -281,12 +281,12 @@ applyDiff m (Diff diffs) =
     newKeys :: k -> DeltaHistory v -> Maybe v
     newKeys _k h = case last h of
       Insert x -> Just x
-      Delete _ -> Nothing
+      Delete   -> Nothing
 
     oldKeys :: k -> v -> DeltaHistory v -> Maybe v
     oldKeys _k _v1 h = case last h of
       Insert x -> Just x
-      Delete _ -> Nothing
+      Delete   -> Nothing
 
 -- | Applies a diff to a @'Map'@ for a specific set of keys.
 applyDiffForKeys ::

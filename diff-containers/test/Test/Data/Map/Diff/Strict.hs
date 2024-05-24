@@ -158,8 +158,8 @@ instance Arbitrary v => Arbitrary (DeltaHistory v) where
 instance Arbitrary v => Arbitrary (Delta v) where
   arbitrary = oneof [
       Insert <$> arbitrary
-    , Delete <$> arbitrary
+    , pure Delete
     ]
   shrink de = case de of
     Insert x -> Insert <$> shrink x
-    Delete x -> Delete <$> shrink x
+    Delete   -> []
