@@ -6,6 +6,7 @@
 {-# LANGUAGE InstanceSigs               #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TupleSections              #-}
 
 -- | See the module documentation for "Data.Map.Diff.Strict".
 module Data.Map.Diff.Strict.Internal (
@@ -116,13 +117,13 @@ keysSet (Diff m) = Map.keysSet m
 diff :: (Ord k, Eq v) => Map k v -> Map k v -> Diff k v
 diff m1 m2 = Diff $
     Merge.merge
-      (Merge.mapMissing $ \_k v -> singletonDelete v)
+      (Merge.mapMissing $ \_k _v -> singletonDelete)
       (Merge.mapMissing $ \_k v -> singletonInsert v)
       (Merge.zipWithMaybeMatched $ \ _k v1 v2 ->
         if v1 == v2 then
           Nothing
         else
-          Just $ singletonDelete v1 <> singletonInsert v2
+          Just $ singletonDelete <> singletonInsert v2
       )
       m1
       m2
@@ -140,7 +141,7 @@ fromMapInserts = Diff . Map.map singletonInsert
 
 -- | @'fromMapDeletes' m@ creates a @'Diff'@ that deletes all values in @m@.
 fromMapDeletes :: Map k v -> Diff k v
-fromMapDeletes = Diff . Map.map singletonDelete
+fromMapDeletes = Diff . Map.map (const singletonDelete)
 
 fromListDeltaHistories :: Ord k => [(k, DeltaHistory v)] -> Diff k v
 fromListDeltaHistories = Diff . Map.fromList
@@ -154,8 +155,8 @@ fromListInserts :: Ord k => [(k, v)] -> Diff k v
 fromListInserts = fromListDeltaHistories . fmap (second singletonInsert)
 
 -- | @'fromListDeletes' xs@ creates a @'Diff'@ that deletes all values in @xs@.
-fromListDeletes :: Ord k => [(k, v)] -> Diff k v
-fromListDeletes = fromListDeltaHistories . fmap (second singletonDelete)
+fromListDeletes :: Ord k => [k] -> Diff k v
+fromListDeletes = fromListDeltaHistories . fmap (,singletonDelete)
 
 singleton :: Delta v -> DeltaHistory v
 singleton = DeltaHistory . NESeq.singleton
@@ -163,8 +164,8 @@ singleton = DeltaHistory . NESeq.singleton
 singletonInsert :: v -> DeltaHistory v
 singletonInsert = singleton . Insert
 
-singletonDelete :: v -> DeltaHistory v
-singletonDelete _ = singleton Delete
+singletonDelete :: DeltaHistory v
+singletonDelete = singleton Delete
 
 {------------------------------------------------------------------------------
   Deconstruction

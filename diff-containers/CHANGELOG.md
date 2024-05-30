@@ -1,3 +1,11 @@
+## next release — ????-??-??
+
+### Breaking
+
+* When creating a diff with only deletes for specific keys, the value to be
+  deleted no longer has to be known. As such, `fromListDeletes` now requires
+  passing in a list of keys, instead of a list of key-value pairs.
+
 ## 1.2.0.0 — 2024-05-24
 
 ### Breaking
