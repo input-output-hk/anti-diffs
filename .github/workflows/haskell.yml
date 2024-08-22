@@ -25,10 +25,17 @@ jobs:
         ghc: ["8.10.7", "9.2.8", "9.4.8", "9.6.4", "9.8.2"]
         cabal: ["3.10.2.1"]
         os: [ubuntu-latest, windows-latest, macOS-latest]
+        exclude:
+        - ghc: 8.10.7
+          os: macOS-latest
+        include:
+        - ghc: 8.10.7
+          cabaL: 3.10.2.1
+          os: macOS-13
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Haskell
       id: setup-haskell
@@ -93,9 +100,19 @@ jobs:
         cabal: ["3.10.2.1"]
         os: [ubuntu-latest]
 
+    # Fix the index-state so we can get proper caching effects. Change this to a
+    # more recent time if you want to use a newer version of stylish-haskell, or
+    # if you want stylish-haskell to use updated dependencies.
+    #
+    # We use this environment variable in the primary key of our caches, and as
+    # an argument to cabal install. This ensures that we never rebuild
+    # dependencies because of newly uploaded packages unless we want to.
+    env:
+      hackage-index-state: "2024-05-30T00:00:00Z"
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install system dependencies (apt-get)
       run: |
@@ -117,15 +134,17 @@ jobs:
       run: echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
     - name: Cache cabal store
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-cabal-stylish
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ env.hackage-index-state }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-
 
     - name: Install stylish-haskell
-      run: cabal install --ignore-project stylish-haskell --constraint 'stylish-haskell == 0.14.6.0'
+      run: cabal install --ignore-project --index-state="${{ env.hackage-index-state }}" stylish-haskell --constraint 'stylish-haskell == 0.14.6.0'
 
     - name: Record stylish-haskell version
       run: |
@@ -148,9 +167,14 @@ jobs:
         cabal: ["3.10.2.1"]
         os: [ubuntu-latest]
 
+    # See the comment on the hackage-index-state environment variable for the
+    # stylish-haskell job.
+    env:
+      hackage-index-state: "2024-04-10T14:36:07Z"
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install system dependencies (apt-get)
       run: |
@@ -172,12 +196,14 @@ jobs:
       run: echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
     - name: Cache cabal store
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-cabal-cabal-fmt
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-${{ env.hackage-index-state }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-
 
     - name: Install cabal-fmt
       run: cabal install --ignore-project cabal-fmt --constraint 'cabal-fmt == 0.1.11'
@@ -205,7 +231,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Haskell
       id: setup-haskell
