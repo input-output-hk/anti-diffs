@@ -113,7 +113,7 @@ jobs:
       - name: Upload haddocks artifact to pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/haddocks
+          path: ./haddocks
 
       - name: Deploy to GitHub pages
         id: deployment
