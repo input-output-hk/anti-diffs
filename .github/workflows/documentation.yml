@@ -1,9 +1,6 @@
 # Sources
 # * https://github.com/haskell-actions/setup/tree/v2/?tab=readme-ov-file#model-cabal-workflow-with-caching
 # * https://github.com/actions/starter-workflows/blob/main/pages/static.yml
-# * https://haskell-haddock.readthedocs.io/en/latest/multi-components.html
-# * https://github.com/IntersectMBO/ouroboros-consensus/blob/main/.github/workflows/ci.yml
-# * https://github.com/IntersectMBO/ouroboros-consensus/blob/main/scripts/docs/haddocks.sh
 #
 name: Documentation
 
@@ -32,13 +29,13 @@ jobs:
       fail-fast: false
 
     env:
-      ghc: "9.6.4"
-      cabal: "3.10.2.1"
+      ghc: "9.6.6"
+      cabal: "3.12.1.0"
       os: ubuntu-latest"
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Haskell
       id: setup-haskell
@@ -55,7 +52,7 @@ jobs:
       # The last step generates dist-newstyle/cache/plan.json for the cache key.
 
     - name: Cache cabal store
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: ${{ runner.os }}-${{ env.ghc }}-documentation-cabal-store
       with:
@@ -67,11 +64,11 @@ jobs:
 
     - name: Build haddocks
       run: |
-        ./scripts/haddocks.sh
-        tar vzcf haddocks.tgz ./docs/haddocks
+        cabal haddock-project --internal --hackage --haddock-options="--title anti-diffs --package-name anti-diffs --gen-index --gen-contents --quickjump"
+        tar vzcf haddocks.tgz ./haddocks
 
     - name: Upload haddocks as an artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: haddocks
         path: haddocks.tgz
@@ -99,13 +96,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v5
 
       - name: Download haddocks artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: haddocks
 
@@ -114,10 +111,10 @@ jobs:
           tar vzxf haddocks.tgz
 
       - name: Upload haddocks artifact to pages
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./docs/haddocks
 
       - name: Deploy to GitHub pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4

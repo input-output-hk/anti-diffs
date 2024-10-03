@@ -17,20 +17,21 @@ permissions:
 jobs:
   # Build and test
   build:
+    name: "haskell-ci (${{ matrix.ghc }}, ${{ matrix.os }})"
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["8.10.7", "9.2.8", "9.4.8", "9.6.4", "9.8.2"]
-        cabal: ["3.10.2.1"]
+        ghc: ["8.10", "9.2", "9.4", "9.6", "9.8", "9.10"]
+        cabal: ["3.12.1.0"]
         os: [ubuntu-latest, windows-latest, macOS-latest]
         exclude:
-        - ghc: 8.10.7
+        - ghc: "8.10"
           os: macOS-latest
         include:
-        - ghc: 8.10.7
-          cabaL: 3.10.2.1
+        - ghc: "8.10"
+          cabal: "3.12.1.0"
           os: macOS-13
 
     steps:
@@ -87,7 +88,7 @@ jobs:
       run: cabal build all
 
     - name: Run tests
-      run: cabal test -j1 --test-show-details=direct all
+      run: cabal test -j1 all
 
   # Check formatting for Haskell files
   stylish-haskell:
@@ -96,8 +97,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["9.6.4"]
-        cabal: ["3.10.2.1"]
+        ghc: ["9.6"]
+        cabal: ["3.12.1.0"]
         os: [ubuntu-latest]
 
     # Fix the index-state so we can get proper caching effects. Change this to a
@@ -144,7 +145,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-
 
     - name: Install stylish-haskell
-      run: cabal install --ignore-project --index-state="${{ env.hackage-index-state }}" stylish-haskell --constraint 'stylish-haskell == 0.14.6.0'
+      run: cabal install --ignore-project --index-state="${{ env.hackage-index-state }}" stylish-haskell-0.14.6.0
 
     - name: Record stylish-haskell version
       run: |
@@ -163,14 +164,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["9.6.4"]
-        cabal: ["3.10.2.1"]
+        ghc: ["9.6"]
+        cabal: ["3.12.1.0"]
         os: [ubuntu-latest]
 
     # See the comment on the hackage-index-state environment variable for the
     # stylish-haskell job.
     env:
-      hackage-index-state: "2024-04-10T14:36:07Z"
+      hackage-index-state: "2024-07-01T14:40:46Z"
 
     steps:
     - name: Checkout repository
@@ -205,28 +206,29 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-name }}-
 
-    - name: Install cabal-fmt
-      run: cabal install --ignore-project cabal-fmt --constraint 'cabal-fmt == 0.1.11'
+    - name: Install cabal-gild
+      run: cabal install --ignore-project --index-state="${{ env.hackage-index-state }}" cabal-fmt-0.1.12
 
-    - name: Record cabal-fmt version
+    - name: Record cabal-gild version
       run: |
         which cabal-fmt
         cabal-fmt --version
 
-    - name: Run cabal-fmt
+    - name: Run cabal-gild
       run: |
         ./scripts/format-cabal.sh
         git diff --exit-code
 
   # Check cabal files
   cabal-check:
+    name: "cabal check"
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["9.6.4"]
-        cabal: ["3.10.2.1"]
+        ghc: ["9.6"]
+        cabal: ["3.12.1.0"]
         os: [ubuntu-latest]
 
     steps:

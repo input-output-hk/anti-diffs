@@ -1,10 +1,14 @@
-## next release — ????-??-??
+## 1.3.0.0 — 2024-10-03
 
 ### Breaking
 
 * When creating a diff with only deletes for specific keys, the value to be
   deleted no longer has to be known. As such, `fromListDeletes` now requires
   passing in a list of keys, instead of a list of key-value pairs.
+
+### Patch
+
+* Make it build with `ghc-9.10`.
 
 ## 1.2.0.0 — 2024-05-24
 

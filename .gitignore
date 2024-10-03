@@ -24,4 +24,4 @@ cabal.project.local~
 .ghc.environment.*
 
 # Custom
-docs/
+haddocks/
