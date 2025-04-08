@@ -1,6 +1,6 @@
 cabal-version:   3.0
 name:            fingertree-rm
-version:         1.0.0.3
+version:         1.0.0.4
 synopsis:        Finger-trees with root measures
 description:     Finger-trees with root measures.
 license:         Apache-2.0
@@ -17,7 +17,8 @@ author:          Joris Dral
 maintainer:      operations@iohk.io, Joris Dral (joris@well-typed.com)
 category:        Data Structures
 build-type:      Simple
-tested-with:     GHC ==8.10 || ==9.2 || ==9.4 || ==9.6 || ==9.8 || ==9.10
+tested-with:
+  GHC ==8.10 || ==9.2 || ==9.4 || ==9.6 || ==9.8 || ==9.10 || ==9.12
 
 source-repository head
   type:     git
@@ -28,7 +29,7 @@ source-repository this
   type:     git
   location: https://github.com/input-output-hk/anti-diffs
   subdir:   fingertree-rm
-  tag:      fingertree-rm-1.0.0.3
+  tag:      fingertree-rm-1.0.0.4
 
 common options
   default-language: Haskell2010
@@ -43,7 +44,7 @@ library
   hs-source-dirs:  src
   exposed-modules: Data.FingerTree.RootMeasured.Strict
   build-depends:
-    , base                       >=4.9 && <4.21
+    , base                       >=4.9 && <4.22
     , cardano-strict-containers
     , monoid-subclasses
     , nothunks
@@ -56,7 +57,7 @@ test-suite test
   main-is:          Main.hs
   other-modules:    Test.Data.FingerTree.RootMeasured.Strict
   build-depends:
-    , base              >=4.9 && <4.21
+    , base              >=4.9 && <4.22
     , fingertree-rm
     , tasty
     , tasty-quickcheck
@@ -69,7 +70,7 @@ benchmark bench
   main-is:          Main.hs
   other-modules:    Bench.Data.FingerTree.RootMeasured.Strict
   build-depends:
-    , base                       >=4.9 && <4.21
+    , base                       >=4.9 && <4.22
     , cardano-strict-containers
     , deepseq
     , fingertree
