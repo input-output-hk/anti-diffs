@@ -29,13 +29,13 @@ jobs:
       fail-fast: false
 
     env:
-      ghc: "9.6.6"
-      cabal: "3.12.1.0"
+      ghc: "9.6.7"
+      cabal: "3.16.1.0"
       os: ubuntu-latest"
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup Haskell
       id: setup-haskell
@@ -68,7 +68,7 @@ jobs:
         tar vzcf haddocks.tgz ./haddocks
 
     - name: Upload haddocks as an artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: haddocks
         path: haddocks.tgz
@@ -96,13 +96,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Download haddocks artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: haddocks
 
@@ -111,7 +111,7 @@ jobs:
           tar vzxf haddocks.tgz
 
       - name: Upload haddocks artifact to pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./haddocks
 

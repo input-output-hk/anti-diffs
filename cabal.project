@@ -12,15 +12,49 @@ repository cardano-haskell-packages
 
 index-state:
   -- Bump this if you need newer packages from Hackage
-  , hackage.haskell.org 2025-04-08T00:42:12Z
+  , hackage.haskell.org 2026-03-04T03:06:00Z
   -- Bump this if you need newer packages from CHaP
-  , cardano-haskell-packages 2025-04-07T00:07:03Z
+  , cardano-haskell-packages 2026-03-03T10:50:34Z
 
 packages:
   ./diff-containers
   ./fingertree-rm
 
-if impl (ghc >= 9.12)
-   allow-newer:
-     -- https://github.com/haskellari/tree-diff/issues/97
-     , tree-diff:base
+-- Eariler versions fail to compile due to symbol name clash.
+constraints:
+  , nonempty-containers >= 0.3.2
+
+-- cabal-allow-newer
+if impl (ghc >= 9.14)
+  allow-newer:
+    , aeson:containers
+    , aeson:template-haskell
+    , binary:containers
+    , cborg:base
+    , cborg:containers
+    , comonad:indexed-traversable
+    , diff-containers:base
+    , indexed-traversable:base
+    , indexed-traversable:containers
+    , indexed-traversable-instances:base
+    , quickcheck-instances:QuickCheck
+    , quickcheck-instances:base
+    , quickcheck-instances:bytestring
+    , quickcheck-monoid-subclasses:base
+    , quickcheck-monoid-subclasses:containers
+    , nonempty-vector:base
+    , semialign:base
+    , semialign:containers
+    , serialise:base
+    , serialise:containers
+    , serialise:these
+    , serialise:time
+    , these:base
+    , tree-diff:QuickCheck
+    , tree-diff:aeson
+    , tree-diff:base
+    , tree-diff:containers
+    , tree-diff:semialign
+    , tree-diff:time
+    , tree-diff:uuid-types
+    , uuid-types:template-haskell

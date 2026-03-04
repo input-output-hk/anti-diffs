@@ -1,21 +1,24 @@
-{-# LANGUAGE BangPatterns           #-}
-{-# LANGUAGE ConstraintKinds        #-}
-{-# LANGUAGE DeriveGeneric          #-}
-{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
 -- Note: Parts of the documentation are based on/are directly copied from
 -- documentation in the @Data.FingerTree.Strict@ module.
-module Data.FingerTree.RootMeasured.Strict (
-    -- * Strict finger trees with root measures
+module Data.FingerTree.RootMeasured.Strict
+  ( -- * Strict finger trees with root measures
     StrictFingerTree
+
     -- * Measuring
   , Measured (..)
   , RootMeasured (..)
   , SuperMeasured
+
     -- * Construction
   , fromList
   , (|>)
+
     -- * Splitting
   , Sized (..)
   , SplitRootMeasure (..)
@@ -23,18 +26,23 @@ module Data.FingerTree.RootMeasured.Strict (
   , splitSized
   , splitl
   , splitr
+
     -- * Maps
   , fmap'
   , fmap''
   ) where
 
-import           Data.FingerTree.Strict (Measured)
+import Data.FingerTree.Strict (Measured)
 import qualified Data.FingerTree.Strict as FT
-import           Data.Foldable (Foldable (toList))
-import           Data.Semigroup.Cancellative (LeftCancellative,
-                     LeftReductive (..), RightCancellative, RightReductive (..))
-import           GHC.Generics (Generic)
-import           NoThunks.Class (NoThunks (..), noThunksInValues)
+import Data.Foldable (Foldable (toList))
+import Data.Semigroup.Cancellative
+  ( LeftCancellative
+  , LeftReductive (..)
+  , RightCancellative
+  , RightReductive (..)
+  )
+import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks (..), noThunksInValues)
 
 {-------------------------------------------------------------------------------
   Strict finger trees with root measures
@@ -42,8 +50,8 @@ import           NoThunks.Class (NoThunks (..), noThunksInValues)
 
 -- | A @StrictFingerTree@ with elements of type @a@, an internal measure of type
 -- @vi@, and a root measure of type @vr@.
-data StrictFingerTree vr vi a = SFT {
-    rm       :: vr
+data StrictFingerTree vr vi a = SFT
+  { rm :: vr
   , elements :: !(FT.StrictFingerTree vi a)
   }
   deriving (Show, Eq, Ord, Generic)
@@ -55,8 +63,10 @@ instance NoThunks a => NoThunks (StrictFingerTree vr vi a) where
   showTypeOf _ = "StrictFingerTree'"
   wNoThunks ctxt = noThunksInValues ctxt . toList
 
-instance (Semigroup vr, Measured vi a)
-      => Semigroup (StrictFingerTree vr vi a) where
+instance
+  (Semigroup vr, Measured vi a) =>
+  Semigroup (StrictFingerTree vr vi a)
+  where
   SFT tm1 xs1 <> SFT tm2 xs2 = SFT (tm1 <> tm2) (xs1 FT.>< xs2)
 
 instance (Monoid vr, Measured vi a) => Monoid (StrictFingerTree vr vi a) where
@@ -81,8 +91,11 @@ instance Measured vi a => Measured vi (StrictFingerTree vr vi a) where
 -- > instance Measured T' a where -- ...
 --
 -- Furthermore, we want the root measure to be a cancellative monoid.
-class (LeftCancellative v, RightCancellative v, Monoid v)
-   => RootMeasured v a | a -> v where
+class
+  (LeftCancellative v, RightCancellative v, Monoid v) =>
+  RootMeasured v a
+    | a -> v
+  where
   measureRoot :: a -> v
 
 -- | All @'StrictFingerTree'@s are root measured.
@@ -102,10 +115,10 @@ infixl 5 |>
 --
 -- Mnemonic: a triangle with the single element at the pointy end.
 (|>) ::
-     SuperMeasured vr vi a
-  => StrictFingerTree vr vi a
-  -> a
-  -> StrictFingerTree vr vi a
+  SuperMeasured vr vi a =>
+  StrictFingerTree vr vi a ->
+  a ->
+  StrictFingerTree vr vi a
 SFT vr sft |> (!a) = SFT (vr <> measureRoot a) (sft FT.|> a)
 
 -- | /O(n)/. Create a sequence from a finite list of elements. The opposite
@@ -140,17 +153,17 @@ fromList !xs = SFT (foldMap measureRoot xs) (FT.fromList xs)
 -- result. @f@ denotes a @'SplitRootMeasure'@ function. @length@ denotes a
 -- function that computes the length of a finger tree.
 split ::
-     SuperMeasured vr vi a
-  => (vi -> Bool)
-  -> SplitRootMeasure vr vi a
-  -> StrictFingerTree vr vi a
-  -> ( StrictFingerTree vr vi a
-     , StrictFingerTree vr vi a
-     )
+  SuperMeasured vr vi a =>
+  (vi -> Bool) ->
+  SplitRootMeasure vr vi a ->
+  StrictFingerTree vr vi a ->
+  ( StrictFingerTree vr vi a
+  , StrictFingerTree vr vi a
+  )
 split p f (SFT vr sft) = (SFT vrLeft left, SFT vrRight right)
-  where
-    (left, right)     = FT.split p sft
-    (vrLeft, vrRight) = unSplitRootMeasure f vr (left, right)
+ where
+  (left, right) = FT.split p sft
+  (vrLeft, vrRight) = unSplitRootMeasure f vr (left, right)
 
 -- | A function that computes the root measures of the left and right parts of a
 -- split.
@@ -158,40 +171,40 @@ split p f (SFT vr sft) = (SFT vrLeft left, SFT vrRight right)
 -- The function's arguments are:
 -- * The root measure of the input of the split function, and
 -- * The left and right parts of the split.
-newtype SplitRootMeasure vr vi a = SplitRootMeasure {
-    unSplitRootMeasure ::
-         vr
-      -> ( FT.StrictFingerTree vi a
-         , FT.StrictFingerTree vi a
-         )
-      -> (vr, vr)
+newtype SplitRootMeasure vr vi a = SplitRootMeasure
+  { unSplitRootMeasure ::
+      vr ->
+      ( FT.StrictFingerTree vi a
+      , FT.StrictFingerTree vi a
+      ) ->
+      (vr, vr)
   }
 
 -- | /O(log(min(i,n-i))) + O(i)/. Specialisation of @'split'@ that is fast if
 -- @i@ is small.
 splitl ::
-     SuperMeasured vr vi a
-  => (vi -> Bool)
-  -> StrictFingerTree vr vi a
-  -> ( StrictFingerTree vr vi a
-     , StrictFingerTree vr vi a
-     )
+  SuperMeasured vr vi a =>
+  (vi -> Bool) ->
+  StrictFingerTree vr vi a ->
+  ( StrictFingerTree vr vi a
+  , StrictFingerTree vr vi a
+  )
 splitl p = split p $ SplitRootMeasure $ \vr (l, _r) ->
   let vrl = foldMap measureRoot l
-  in  (vrl, errorIfStripFailed $ stripPrefix vrl vr)
+   in (vrl, errorIfStripFailed $ stripPrefix vrl vr)
 
 -- | /O(log(min(i,n-i))) + O(n-i)/. Specialisation of @'split'@ that is fast if
 -- if @i@ is large.
 splitr ::
-     SuperMeasured vr vi a
-  => (vi -> Bool)
-  -> StrictFingerTree vr vi a
-  -> ( StrictFingerTree vr vi a
-     , StrictFingerTree vr vi a
-     )
+  SuperMeasured vr vi a =>
+  (vi -> Bool) ->
+  StrictFingerTree vr vi a ->
+  ( StrictFingerTree vr vi a
+  , StrictFingerTree vr vi a
+  )
 splitr p = split p $ SplitRootMeasure $ \vr (_l, r) ->
   let vrr = foldMap measureRoot r
-  in  (errorIfStripFailed $ stripSuffix vrr vr, vrr)
+   in (errorIfStripFailed $ stripSuffix vrr vr, vrr)
 
 class Sized a where
   size :: a -> Int
@@ -203,29 +216,32 @@ class Sized a where
 -- delegates to @'splitl'@ or @'splitr'@ based on whether @i@ or @n-i@ are
 -- smallest respectively.
 splitSized ::
-     (SuperMeasured vr vi a, Sized vi)
-  => (vi -> Bool)
-  -> StrictFingerTree vr vi a
-  -> ( StrictFingerTree vr vi a
-     , StrictFingerTree vr vi a
-     )
+  (SuperMeasured vr vi a, Sized vi) =>
+  (vi -> Bool) ->
+  StrictFingerTree vr vi a ->
+  ( StrictFingerTree vr vi a
+  , StrictFingerTree vr vi a
+  )
 splitSized p = split p $ SplitRootMeasure $ \vr (l, r) ->
   let
     (sizel, sizer) = (size (FT.measure l), size (FT.measure r))
-  in
-    if sizel <= sizer then
-      let vrl = foldMap measureRoot l
-      in  (vrl, errorIfStripFailed $ stripPrefix vrl vr)
-    else
-      let vrr = foldMap measureRoot r
-      in  (errorIfStripFailed $ stripSuffix vrr vr, vrr)
+   in
+    if sizel <= sizer
+      then
+        let vrl = foldMap measureRoot l
+         in (vrl, errorIfStripFailed $ stripPrefix vrl vr)
+      else
+        let vrr = foldMap measureRoot r
+         in (errorIfStripFailed $ stripSuffix vrr vr, vrr)
 
 errorIfStripFailed :: Maybe a -> a
 errorIfStripFailed (Just x) = x
-errorIfStripFailed Nothing  = error "stripPrefix/stripSuffix: stripping a \
-                                    \prefix or suffix failed, but that should \
-                                    \be impossible. Are you sure the root \
-                                    \measure is truly a cancellative monoid?"
+errorIfStripFailed Nothing =
+  error
+    "stripPrefix/stripSuffix: stripping a \
+    \prefix or suffix failed, but that should \
+    \be impossible. Are you sure the root \
+    \measure is truly a cancellative monoid?"
 
 {-------------------------------------------------------------------------------
   Maps
@@ -235,16 +251,16 @@ errorIfStripFailed Nothing  = error "stripPrefix/stripSuffix: stripping a \
 --
 -- Note: @vr2@ is reconstructed in time linear in the size of the finger tree.
 fmap' ::
-     ( SuperMeasured vr1 vi1 a1
-     , SuperMeasured vr2 vi2 a2
-     )
-  => (a1 -> a2)
-  -> StrictFingerTree vr1 vi1 a1
-  -> StrictFingerTree vr2 vi2 a2
+  ( SuperMeasured vr1 vi1 a1
+  , SuperMeasured vr2 vi2 a2
+  ) =>
+  (a1 -> a2) ->
+  StrictFingerTree vr1 vi1 a1 ->
+  StrictFingerTree vr2 vi2 a2
 fmap' f (SFT _ sft) = SFT vr' sft'
-  where
-    sft' = FT.fmap' f sft
-    vr' = foldMap measureRoot sft'
+ where
+  sft' = FT.fmap' f sft
+  vr' = foldMap measureRoot sft'
 
 -- | Like @'fmap''@, but without the linear-time reconstruction of the root
 -- level measure.
@@ -253,14 +269,14 @@ fmap' f (SFT _ sft) = SFT vr' sft'
 -- of root measures to root measures. This function ensures that we do not have
 -- to reconstruct @vr2@ from the elements of the finger tree.
 fmap'' ::
-     ( SuperMeasured vr1 vi1 a1
-     , SuperMeasured vr2 vi2 a2
-     )
-  => (a1 -> a2)
-  -> (vr1 -> vr2)
-  -> StrictFingerTree vr1 vi1 a1
-  -> StrictFingerTree vr2 vi2 a2
+  ( SuperMeasured vr1 vi1 a1
+  , SuperMeasured vr2 vi2 a2
+  ) =>
+  (a1 -> a2) ->
+  (vr1 -> vr2) ->
+  StrictFingerTree vr1 vi1 a1 ->
+  StrictFingerTree vr2 vi2 a2
 fmap'' f g (SFT vr sft) = SFT vr' sft'
-  where
-    sft' = FT.fmap' f sft
-    vr' = g vr
+ where
+  sft' = FT.fmap' f sft
+  vr' = g vr
