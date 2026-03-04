@@ -44,7 +44,7 @@ library
   hs-source-dirs:  src
   exposed-modules: Data.FingerTree.RootMeasured.Strict
   build-depends:
-    , base                       >=4.9 && <4.22
+    , base                       >=4.9 && <4.23
     , cardano-strict-containers
     , monoid-subclasses
     , nothunks
@@ -57,7 +57,7 @@ test-suite test
   main-is:          Main.hs
   other-modules:    Test.Data.FingerTree.RootMeasured.Strict
   build-depends:
-    , base              >=4.9 && <4.22
+    , base              >=4.9 && <4.23
     , fingertree-rm
     , tasty
     , tasty-quickcheck
@@ -70,7 +70,7 @@ benchmark bench
   main-is:          Main.hs
   other-modules:    Bench.Data.FingerTree.RootMeasured.Strict
   build-depends:
-    , base                       >=4.9 && <4.22
+    , base                       >=4.9 && <4.23
     , cardano-strict-containers
     , deepseq
     , fingertree
