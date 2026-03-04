@@ -2,9 +2,9 @@
 
 module Data.Sequence.NonEmpty.Extra () where
 
-import           Data.Foldable
-import           Data.Sequence.NonEmpty
-import           NoThunks.Class
+import Data.Foldable
+import Data.Sequence.NonEmpty
+import NoThunks.Class
 
 -- | Instance for @'NESeq'@ which only checks for thunks on the elements
 --

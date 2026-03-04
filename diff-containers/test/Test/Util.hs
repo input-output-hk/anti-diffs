@@ -1,9 +1,9 @@
-{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 module Test.Util (OftenSmall (..)) where
 
-import           Test.QuickCheck
+import Test.QuickCheck
 
 -- | See the @'Arbitrary'@ instance for this type.
 newtype OftenSmall a = OftenSmall a
@@ -18,8 +18,9 @@ newtype OftenSmall a = OftenSmall a
 -- examples. We defer to @a@'s generator with low probability to diversify the
 -- test cases we hit.
 instance (Arbitrary a, Integral a) => Arbitrary (OftenSmall a) where
-  arbitrary = frequency [
-      (10, OftenSmall . fromIntegral <$> chooseInt (-5, 5))
-    , (1, OftenSmall <$> arbitrary)
-    ]
+  arbitrary =
+    frequency
+      [ (10, OftenSmall . fromIntegral <$> chooseInt (-5, 5))
+      , (1, OftenSmall <$> arbitrary)
+      ]
   shrink (OftenSmall x) = OftenSmall <$> shrink x
